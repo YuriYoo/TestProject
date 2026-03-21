@@ -9,10 +9,10 @@ using System.Threading.Tasks;
 namespace SimpleAgent.Plugins
 {
 	/// <summary>
-	/// 文件读取插件
-	/// 提供AI对本地文件系统进行读取、目录获取的能力
+	/// 文件系统读写插件
+	/// 提供AI对本地文件系统进行读取、写入、删除、创建目录等操作的能力
 	/// </summary>
-	public class FileSystemReaderPlugin
+	public class FileSystemPlugin
 	{
 		// 工作目录（所有文件操作的基础路径）
 		private readonly string _workingDirectory;
@@ -21,7 +21,7 @@ namespace SimpleAgent.Plugins
 		/// 初始化文件系统插件
 		/// </summary>
 		/// <param name="workingDirectory">允许操作的工作目录路径</param>
-		public FileSystemReaderPlugin(string workingDirectory)
+		public FileSystemPlugin(string workingDirectory)
 		{
 			_workingDirectory = workingDirectory;
 		}
@@ -113,6 +113,100 @@ namespace SimpleAgent.Plugins
 			if (isFile) return $"[存在] 这是一个文件: {fullPath}";
 			if (isDir) return $"[存在] 这是一个目录: {fullPath}";
 			return $"[不存在] 路径不存在: {fullPath}";
+		}
+
+		/// <summary>
+		/// 写入文件内容（覆盖写入，不存在则创建）
+		/// </summary>
+		/// <param name="filePath">目标文件路径</param>
+		/// <param name="content">要写入的内容</param>
+		/// <returns>操作结果描述</returns>
+		[KernelFunction("write_file")]
+		[Description("将内容写入文件，如果文件不存在则创建，已存在则覆盖。会自动创建必要的父目录。")]
+		public async Task<string> WriteFileAsync(
+			[Description("目标文件路径")] string filePath,
+			[Description("要写入的文件内容")] string content)
+		{
+			try
+			{
+				string fullPath = ResolvePath(filePath);
+				if (string.IsNullOrEmpty(fullPath)) return "[错误] 传入路径为空";
+				string dir = Path.GetDirectoryName(fullPath)!;
+				if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+
+				await File.WriteAllTextAsync(fullPath, content);
+				return $"[成功] 已写入文件: {fullPath}（{content.Length} 字符）";
+			}
+			catch (Exception ex)
+			{
+				return $"[错误] 写入文件失败: {ex.Message}";
+			}
+		}
+
+		/// <summary>
+		/// 追加内容到文件末尾
+		/// </summary>
+		[KernelFunction("append_file")]
+		[Description("向文件末尾追加内容，不存在则创建。")]
+		public async Task<string> AppendFile(
+			[Description("目标文件路径")] string filePath,
+			[Description("要追加的内容")] string content)
+		{
+			try
+			{
+				string fullPath = ResolvePath(filePath);
+				if (string.IsNullOrEmpty(fullPath)) return "[错误] 传入路径为空";
+				string dir = Path.GetDirectoryName(fullPath)!;
+				if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+
+				await File.AppendAllTextAsync(fullPath, content);
+				return $"[成功] 已追加内容到: {fullPath}（{content.Length} 字符）";
+			}
+			catch (Exception ex)
+			{
+				return $"[错误] 追加文件失败: {ex.Message}";
+			}
+		}
+
+		/// <summary>
+		/// 创建目录
+		/// </summary>
+		[KernelFunction("create_directory")]
+		[Description("创建目录（包括所有必要的父目录）。")]
+		public string CreateDirectory(
+			[Description("要创建的目录路径")] string directoryPath)
+		{
+			try
+			{
+				string fullPath = ResolvePath(directoryPath);
+				Directory.CreateDirectory(fullPath);
+				return $"[成功] 已创建目录: {fullPath}";
+			}
+			catch (Exception ex)
+			{
+				return $"[错误] 创建目录失败: {ex.Message}";
+			}
+		}
+
+		/// <summary>
+		/// 删除文件
+		/// </summary>
+		[KernelFunction("delete_file")]
+		[Description("删除指定文件。")]
+		public string DeleteFile(
+			[Description("要删除的文件路径")] string filePath)
+		{
+			try
+			{
+				string fullPath = ResolvePath(filePath);
+				if (!File.Exists(fullPath)) return $"[警告] 文件不存在: {fullPath}";
+				File.Delete(fullPath);
+				return $"[成功] 已删除文件: {fullPath}";
+			}
+			catch (Exception ex)
+			{
+				return $"[错误] 删除文件失败: {ex.Message}";
+			}
 		}
 
 		/// <summary>

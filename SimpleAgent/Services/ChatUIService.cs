@@ -43,7 +43,7 @@ namespace SimpleAgent.Services
 			};
 		}
 
-		public void SendMessage(MessageType messageType, AgentType agentType, string message)
+		public void SendMessage(MessageType messageType, AgentType agentType, string message, bool addNewLine = false, Color? color = null)
 		{
 			if (agentType == AgentType.Router)
 			{
@@ -57,20 +57,20 @@ namespace SimpleAgent.Services
 					// 如果是系统消息直接发送, 并且强制结束AI的消息流
 					if (string.IsNullOrWhiteSpace(message))
 					{
-						CreateMessageItem(messageType, chatPanels[agentType], message);
+						CreateMessageItem(messageType, chatPanels[agentType], message, addNewLine, color);
 					}
 					EndChat(agentType);
 					break;
 				case MessageType.User:
 					// 如果是用户消息直接发送, 并且强制结束AI的消息流
-					CreateMessageItem(messageType, chatPanels[agentType], message);
+					CreateMessageItem(messageType, chatPanels[agentType], message, addNewLine, color);
 					EndChat(agentType);
 					break;
 				case MessageType.AI:
 					// 如果之前没有进行中的消息则创建新消息
 					if (inChat[agentType] == null)
 					{
-						var item = CreateMessageItem(messageType, chatPanels[agentType], message);
+						var item = CreateMessageItem(messageType, chatPanels[agentType], message, addNewLine, color);
 						inChat[agentType] = item;
 						agentTabs[agentType].SetRunning(true);
 						agentTabs[agentType].PerformClick();
@@ -78,7 +78,7 @@ namespace SimpleAgent.Services
 					// 如果已有进行中的消息则追加内容
 					else
 					{
-						AppendMessage(chatPanels[agentType], inChat[agentType], message);
+						AppendMessage(chatPanels[agentType], inChat[agentType], message, addNewLine, color);
 					}
 					break;
 			}
@@ -97,9 +97,9 @@ namespace SimpleAgent.Services
 		/// <param name="panel">发送到哪个消息面板</param>
 		/// <param name="message">消息内容</param>
 		/// <returns></returns>
-		private ChatMessageItem CreateMessageItem(MessageType messageType, FlowLayoutPanel panel, string message)
+		private ChatMessageItem CreateMessageItem(MessageType messageType, FlowLayoutPanel panel, string message, bool addNewLine = false, Color? color = null)
 		{
-			var item = new ChatMessageItem(messageType, message)
+			var item = new ChatMessageItem(messageType)
 			{
 				Width = panel.ClientSize.Width
 			};
@@ -109,6 +109,7 @@ namespace SimpleAgent.Services
 			panel.VerticalScroll.Value = panel.VerticalScroll.Maximum;
 			panel.ResumeLayout();
 
+			AppendMessage(panel, item, message, addNewLine, color);
 			return item;
 		}
 
@@ -118,9 +119,10 @@ namespace SimpleAgent.Services
 		/// <param name="panel"></param>
 		/// <param name="item"></param>
 		/// <param name="message"></param>
-		private void AppendMessage(FlowLayoutPanel panel, ChatMessageItem item, string message)
+		private void AppendMessage(FlowLayoutPanel panel, ChatMessageItem item, string message, bool addNewLine = false, Color? color = null)
 		{
-			item.AppendText(message);
+			if (string.IsNullOrEmpty(message)) return;
+			item.AppendText(message, addNewLine, color);
 			panel.SuspendLayout();
 			panel.VerticalScroll.Value = panel.VerticalScroll.Maximum;
 			panel.ResumeLayout();

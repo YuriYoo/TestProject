@@ -6,6 +6,7 @@ using SimpleAgent.Plugins;
 using SimpleAgent.Services;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -32,19 +33,22 @@ namespace SimpleAgent.Agents
 		public RouterAgent(KernelService kernelService, Action onRouteToPlanner, Action onRouteToDeveloper) : base(SystemPrompt)
 		{
 			kernel = kernelService.BuildKernel();
-			var controlPlugin = new RouterWorkflowPlugin
-			{
-				OnRouteToPlanner = onRouteToPlanner,
-				OnRouteToDeveloper = onRouteToDeveloper
-			};
-			kernel.Plugins.AddFromObject(controlPlugin);
+			kernel.Plugins.AddFromObject(new RouterWorkflowPlugin { OnRouteToPlanner = onRouteToPlanner, OnRouteToDeveloper = onRouteToDeveloper }, "router_workflow");
+
+			KernelFunction[] kernelFunctions = [
+				kernel.Plugins.GetFunction("router_workflow", "route_to_developer"),
+				kernel.Plugins.GetFunction("router_workflow", "route_to_planner"),
+			];
 
 			chatCompletionService = kernel.GetRequiredService<IChatCompletionService>();
 			settings = new OpenAIPromptExecutionSettings
 			{
-				FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(),
-				Temperature = 0.2
+				FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(kernelFunctions),
+				Temperature = 0.2,
+				Seed = RouterSeed < 0 ? seed : RouterSeed,
 			};
+
+			Trace.WriteLine($"Router初始化成功, Seed:{settings.Seed}  Temperature:{settings.Temperature}  TopP:{settings.TopP}");
 		}
 	}
 }

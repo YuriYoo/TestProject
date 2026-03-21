@@ -57,7 +57,7 @@
 			ChatMessage.ScrollBars = RichTextBoxScrollBars.None;
 			ChatMessage.Size = new Size(362, 23);
 			ChatMessage.TabIndex = 1;
-			ChatMessage.Text = "思考中...";
+			ChatMessage.Text = "";
 			// 
 			// ChatMessageItem
 			// 

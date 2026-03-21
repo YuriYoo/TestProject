@@ -1,8 +1,8 @@
-﻿using Microsoft.SemanticKernel;
+﻿using Microsoft.Extensions.Logging;
+using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Agents;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
-using Serilog;
 using SimpleAgent.Services;
 using SimpleAgent.UserControls;
 using SimpleAgent.Utility;
@@ -33,7 +33,7 @@ namespace SimpleAgent
 		private KernelService kernelService;
 		private MultiAgentOrchestrator multiAgentOrchestrator;
 
-		public MainForm()
+		public MainForm(/*ILoggerFactory loggerFactory*/)
 		{
 			InitializeComponent();
 			InitializeAgentTab();
@@ -43,7 +43,7 @@ namespace SimpleAgent
 			settingsService.Save(settingsService.Settings);
 
 			chatUIService = new(this);
-			kernelService = new(settingsService.Settings);
+			kernelService = new(settingsService.Settings/*, loggerFactory*/);
 			multiAgentOrchestrator = new(kernelService, chatUIService, this);
 
 			// 设置自定义渲染器

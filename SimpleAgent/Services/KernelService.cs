@@ -12,7 +12,7 @@ using SimpleAgent.Models;
 using SimpleAgent.Plugins;
 using Microsoft.Extensions.DependencyInjection;
 using SimpleAgent.Filter;
-using Serilog;
+using Microsoft.Extensions.Logging;
 
 namespace SimpleAgent.Services
 {
@@ -32,10 +32,14 @@ namespace SimpleAgent.Services
 		/// <summary>当前工作目录</summary>
 		private string _workingDirectory;
 
+		//private ILoggerFactory _loggerFactory;
+
 		/// <summary>初始化KernelService</summary>
-		public KernelService(AppSettings settings)
+		public KernelService(AppSettings settings/*, ILoggerFactory loggerFactory*/)
 		{
 			if (string.IsNullOrEmpty(settings.ApiBaseUrl)) throw new InvalidOperationException("必须填写API调用地址");
+
+			//_loggerFactory = loggerFactory;
 
 			var handler = new HttpLoggingHandler(new HttpClientHandler());
 			_httpClient = new(handler) { BaseAddress = new Uri(settings.ApiBaseUrl) };
@@ -48,6 +52,9 @@ namespace SimpleAgent.Services
 		public Kernel BuildKernel()
 		{
 			var builder = Kernel.CreateBuilder();
+
+			// 挂载统一的日志工厂
+			//builder.Services.AddSingleton(_loggerFactory);
 
 			// 根据提供商类型注册不同的Chat Completion服务
 
@@ -64,41 +71,12 @@ namespace SimpleAgent.Services
 			// 将自定义的日志拦截器注册到服务中
 			builder.Services.AddSingleton<IFunctionInvocationFilter, FunctionLoggingFilter>();
 
+			builder.Plugins.AddFromType<HttpTestPlugin>("http_test");
+			builder.Plugins.AddFromObject(new FileSystemPlugin(_workingDirectory), "file_System");
+			builder.Plugins.AddFromObject(new TerminalPlugin(_workingDirectory), "terminal");
+
 			// 构建Kernel
 			return builder.Build();
-		}
-
-		/// <summary>
-		/// 创建只读Kernel
-		/// </summary>
-		/// <returns></returns>
-		public Kernel CreateReadOnlyKernel()
-		{
-			var kernel = BuildKernel();
-			kernel.Plugins.AddFromObject(new FileSystemReaderPlugin(_workingDirectory), "FileSystemReader");
-			return kernel;
-		}
-
-		/// <summary>
-		/// 创建读写Kernel
-		/// </summary>
-		/// <returns></returns>
-		public Kernel CreateWriterKernel()
-		{
-			var kernel = CreateReadOnlyKernel();
-			kernel.Plugins.AddFromObject(new FileSystemWriterPlugin(_workingDirectory), "FileSystemWriter");
-			return kernel;
-		}
-
-		/// <summary>
-		/// 创建拥有所有插件权限的Kernel
-		/// </summary>
-		/// <returns></returns>
-		public Kernel CreateCompleteKernel()
-		{
-			var kernel = CreateWriterKernel();
-			kernel.Plugins.AddFromObject(new TerminalPlugin(_workingDirectory), "Terminal");
-			return kernel;
 		}
 
 		/// <summary>

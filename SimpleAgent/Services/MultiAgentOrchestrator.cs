@@ -1,7 +1,6 @@
 ﻿using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
-using Serilog;
 using SimpleAgent.Agents;
 using SimpleAgent.Models;
 using SimpleAgent.Plugins;
@@ -80,9 +79,33 @@ namespace SimpleAgent.Services
 		/// <param name="messageType"></param>
 		/// <param name="agentType"></param>
 		/// <param name="message"></param>
-		private void SendUIMessage(MessageType messageType, AgentType agentType, string message)
+		private void SendUIMessage(MessageType messageType, AgentType agentType, string message, bool addNewLine = false, Color? color = null)
 		{
-			chatUIService.SendMessage(messageType, agentType, message);
+			chatUIService.SendMessage(messageType, agentType, message, addNewLine, color);
+		}
+
+		/// <summary>
+		/// 向UI界面发送工具调用消息（专门处理模型调用插件时的显示）
+		/// </summary>
+		/// <param name="agentType"></param>
+		/// <param name="name"></param>
+		/// <param name="arguments"></param>
+		private void SendToolMessage(AgentType agentType, string? name, string? arguments)
+		{
+			if (string.IsNullOrWhiteSpace(name))
+			{
+				SendUIMessage(MessageType.AI, agentType, $"[正在调用未知工具]", true, Color.Gray);
+				return;
+			}
+			if (string.IsNullOrEmpty(arguments) || arguments.Length <= 2)
+			{
+				arguments = "";
+			}
+			else if (arguments.Length > 30)
+			{
+				arguments = $"{arguments[..30]}...}}";
+			}
+			SendUIMessage(MessageType.AI, agentType, $"[正在调用工具] {name} {arguments}", true, Color.Gray);
 		}
 
 		/// <summary>
@@ -127,22 +150,89 @@ namespace SimpleAgent.Services
 					// 讨论规划
 					case WorkflowState.Planning:
 						await HandlePlanningAsync();
+						SaveChatHistory(AgentType.Planner, _plannerAgent.chatHistory);
 						break;
 
 					// 开发测试
 					case WorkflowState.Developing:
 						await HandleDevelopingAsync();
+						SaveChatHistory(AgentType.Developer, _developerAgent.chatHistory);
 						break;
 
 					// 验收修改
 					case WorkflowState.Reviewing:
 						await HandleReviewingAsync();
+						SaveChatHistory(AgentType.Reviewer, _reviewerAgent.chatHistory);
 						break;
 				}
 				Trace.WriteLine($"结束状态: {_currentState}");
 			}
 
 			Trace.WriteLine("本轮任务已全部处理完毕，等待下一次用户输入。");
+		}
+
+		private void SaveChatHistory(AgentType agentType, ChatHistory chatHistory)
+		{
+			var path = $"logs\\{DateTime.Now:yyyyMMdd_HHmmss}_{agentType}.txt";
+			StringBuilder sb = new();
+			foreach (var message in chatHistory)
+			{
+				sb.AppendLine($"===== {message.Role} =====");
+				sb.AppendLine($"[Items]");
+				if (message.Items.Count > 0)
+				{
+					foreach (var item in message.Items)
+					{
+						sb.AppendLine($"- Mime:{item.MimeType}  Inner:{item.InnerContent}");
+						if (item.Metadata != null)
+						{
+							foreach (var meta in item.Metadata)
+							{
+								sb.AppendLine($"- {meta.Key}: {meta.Value}");
+								if (meta.Key == "ChatResponseMessage.FunctionToolCalls")
+								{
+									if (meta.Value is List<OpenAI.Chat.ChatToolCall> toolCalls)
+									{
+										foreach (var toolCall in toolCalls)
+										{
+											sb.AppendLine($"  - ID:{toolCall.Id}  Kind:{toolCall.Kind}  FuncName:{toolCall.FunctionName}  FuncArgs:{toolCall.FunctionArguments}");
+										}
+									}
+									else
+									{
+										sb.AppendLine($"  - 转换失败: {meta.Value?.GetType()}");
+									}
+								}
+							}
+						}
+					}
+				}
+				if (message.Metadata != null && message.Metadata.Count > 0)
+				{
+					sb.AppendLine($"[Metadata]");
+					foreach (var meta in message.Metadata)
+					{
+						sb.AppendLine($"- {meta.Key}: {meta.Value}");
+						if (meta.Key == "ChatResponseMessage.FunctionToolCalls")
+						{
+							if (meta.Value is List<OpenAI.Chat.ChatToolCall> toolCalls)
+							{
+								foreach (var toolCall in toolCalls)
+								{
+									sb.AppendLine($"  - ID:{toolCall.Id}  Kind:{toolCall.Kind}  FuncName:{toolCall.FunctionName}  FuncArgs:{toolCall.FunctionArguments}");
+								}
+							}
+							else
+							{
+								sb.AppendLine($"  - 转换失败: {meta.Value?.GetType()}");
+							}
+						}
+					}
+				}
+				sb.AppendLine($"[Content]");
+				sb.AppendLine($"{message.Content}");
+			}
+			File.WriteAllText(path, sb.ToString());
 		}
 
 		/// <summary>
@@ -182,7 +272,31 @@ namespace SimpleAgent.Services
 			await foreach (var chunk in _plannerAgent.GetChatMessageContentAsync())
 			{
 				sb.Append(chunk.Content);
-				SendUIMessage(MessageType.AI, AgentType.Planner, chunk.Content ?? "");
+				//SendUIMessage(MessageType.AI, AgentType.Planner, chunk.Content ?? "");
+
+				// 遍历当前 chunk 中的所有内容项
+				foreach (var item in chunk.Items)
+				{
+					switch (item)
+					{
+						// 普通的消息文本内容
+						case StreamingTextContent textContent:
+							//sb.Append(textContent.Text);
+							SendUIMessage(MessageType.AI, AgentType.Planner, textContent.Text ?? "");
+							break;
+
+						// 工具/函数调用的内容（模型决定调用插件时会触发）
+						case StreamingFunctionCallUpdateContent functionCallUpdate:
+							// 这里会流式输出函数名、参数等, Arguments 参数是一段段 JSON 字符串流式到达的
+							SendToolMessage(AgentType.Planner, functionCallUpdate.Name, functionCallUpdate.Arguments);
+							break;
+
+						// 你还可以按需处理其他类型，例如 StreamingFileReferenceContent 等
+						default:
+							SendUIMessage(MessageType.AI, AgentType.Planner, $"未知的流内容: {item.GetType()}", true, Color.Red);
+							break;
+					}
+				}
 
 				if (_currentState != WorkflowState.Planning)
 				{
@@ -229,7 +343,7 @@ namespace SimpleAgent.Services
 			Trace.WriteLine("Developer: 正在编写和测试代码...");
 			_context.DevCycleCount++;
 
-			if (_context.DevCycleCount > 5)
+			if (_context.DevCycleCount > 500)
 			{
 				throw new Exception("开发-测试循环次数超限，强制中止！");
 			}
@@ -242,14 +356,43 @@ namespace SimpleAgent.Services
 			else if (!string.IsNullOrEmpty(_context.ReviewerFeedback))
 			{
 				_developerAgent.AddUserMessage($"Reviewer 打回，要求修改：{_context.ReviewerFeedback}");
+				_context.ReviewerFeedback = string.Empty;
+			}
+			else
+			{
+				_developerAgent.AddUserMessage("【系统提示】如果你确定已经完成计划，也已经进行过测试且编译没有问题，请调用 `submit_for_review` 提交审查。如果没有完成任务，请不要停止，根据上一个消息继续你的工作。");
 			}
 
 			StringBuilder sb = new();
 			await foreach (var chunk in _developerAgent.GetChatMessageContentAsync())
 			{
-				Trace.WriteLine($"Developer 输出: AuthorName:{chunk.AuthorName}  ChoiceIndex:{chunk.ChoiceIndex}  Role:{chunk.Role.Value}  Items:{chunk.Items.Count}  Meta:{string.Join(',', chunk.Metadata)}");
+				//Trace.WriteLine($"Developer 输出: Role:{(chunk.Role == null ? "Unknown" : chunk.Role.Value)}  Items:{string.Join(',', chunk.Items)}  Meta:{string.Join(',', chunk.Metadata)}");
 				sb.Append(chunk.Content);
-				SendUIMessage(MessageType.AI, AgentType.Developer, chunk.Content ?? "");
+				//SendUIMessage(MessageType.AI, AgentType.Developer, chunk.Content ?? "");
+
+				// 遍历当前 chunk 中的所有内容项
+				foreach (var item in chunk.Items)
+				{
+					switch (item)
+					{
+						// 普通的消息文本内容
+						case StreamingTextContent textContent:
+							//sb.Append(textContent.Text);
+							SendUIMessage(MessageType.AI, AgentType.Developer, textContent.Text ?? "");
+							break;
+
+						// 工具/函数调用的内容（模型决定调用插件时会触发）
+						case StreamingFunctionCallUpdateContent functionCallUpdate:
+							// 这里会流式输出函数名、参数等, Arguments 参数是一段段 JSON 字符串流式到达的
+							SendToolMessage(AgentType.Developer, functionCallUpdate.Name, functionCallUpdate.Arguments);
+							break;
+
+						// 你还可以按需处理其他类型，例如 StreamingFileReferenceContent 等
+						default:
+							SendUIMessage(MessageType.AI, AgentType.Developer, $"未知的流内容: {item.GetType()}", true, Color.Red);
+							break;
+					}
+				}
 
 				if (_currentState != WorkflowState.Developing)
 				{

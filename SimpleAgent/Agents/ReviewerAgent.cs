@@ -6,6 +6,7 @@ using SimpleAgent.Plugins;
 using SimpleAgent.Services;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -34,21 +35,27 @@ namespace SimpleAgent.Agents
 
 		public ReviewerAgent(KernelService kernelService, Action onReviewPassed, Action<string> onReviewFailed) : base(SystemPrompt)
 		{
-			kernel = kernelService.CreateReadOnlyKernel();
-			var controlPlugin = new ReviewerWorkflowPlugin
-			{
-				OnReviewPassed = onReviewPassed,
-				OnReviewFailed = onReviewFailed
-			};
-			kernel.Plugins.AddFromObject(controlPlugin);
-			kernel.Plugins.AddFromType<HttpTestPlugin>();
+			kernel = kernelService.BuildKernel();
+			kernel.Plugins.AddFromObject(new ReviewerWorkflowPlugin { OnReviewPassed = onReviewPassed, OnReviewFailed = onReviewFailed }, "reviewer_workflow");
+
+			KernelFunction[] kernelFunctions = [
+				kernel.Plugins.GetFunction("file_System", "read_file"),
+				kernel.Plugins.GetFunction("file_System", "list_directory"),
+				kernel.Plugins.GetFunction("file_System", "get_working_directory"),
+				kernel.Plugins.GetFunction("reviewer_workflow", "pass_review"),
+				kernel.Plugins.GetFunction("reviewer_workflow", "fail_review"),
+				kernel.Plugins.GetFunction("http_test", "send_http_request"),
+			];
 
 			chatCompletionService = kernel.GetRequiredService<IChatCompletionService>();
 			settings = new OpenAIPromptExecutionSettings
 			{
-				FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(),
-				Temperature = 0.1
+				FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(kernelFunctions),
+				Temperature = 0.1,
+				Seed = ReviewerSeed < 0 ? seed : ReviewerSeed,
 			};
+
+			Trace.WriteLine($"Reviewer初始化成功, Seed:{settings.Seed}  Temperature:{settings.Temperature}  TopP:{settings.TopP}");
 		}
 	}
 }
