@@ -1,0 +1,30 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36603.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleAgent", "SimpleAgent\SimpleAgent.csproj", "{0CFA9C08-6BAD-4E38-91D1-28EAFD183361}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{0CFA9C08-6BAD-4E38-91D1-28EAFD183361}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0CFA9C08-6BAD-4E38-91D1-28EAFD183361}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0CFA9C08-6BAD-4E38-91D1-28EAFD183361}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0CFA9C08-6BAD-4E38-91D1-28EAFD183361}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {E1D8AD2E-B068-4FB8-997A-A3E48235BE7B}
+	EndGlobalSection
+EndGlobal
