@@ -96,23 +96,6 @@ namespace SimpleAgent
 			UserInput.Focus();
 		}
 
-		/// <summary>
-		/// 辅助方法：向聊天框追加带有颜色的文本
-		/// </summary>
-		/// <param name="text"></param>
-		/// <param name="color"></param>
-		private void AppendText(string text, Color color)
-		{
-			ChatHistory.SelectionStart = ChatHistory.TextLength;
-			ChatHistory.SelectionLength = 0;
-			ChatHistory.SelectionColor = color;
-			ChatHistory.AppendText(text);
-			ChatHistory.SelectionColor = ChatHistory.ForeColor;
-
-			// 自动滚动到最新消息
-			ChatHistory.ScrollToCaret();
-		}
-
 		#region Windows基础功能
 
 		/// <summary>
@@ -256,20 +239,36 @@ namespace SimpleAgent
 		/// <param name="e"></param>
 		private void ChatPanel_SizeChanged(object sender, EventArgs e)
 		{
-			// 暂停布局逻辑，提高性能并减少闪烁
-			PlannerChatPanel.SuspendLayout();
+			if (PlannerChatPanel.Visible)
+			{
+				UpdateChatPanelWidth(PlannerChatPanel);
+			}
+			else if (CoderChatPanel.Visible)
+			{
+				UpdateChatPanelWidth(CoderChatPanel);
+			}
+			else if (ReviewerChatPanel.Visible)
+			{
+				UpdateChatPanelWidth(ReviewerChatPanel);
+			}
+		}
 
-			foreach (Control ctrl in PlannerChatPanel.Controls)
+		private void UpdateChatPanelWidth(FlowLayoutPanel chatPanel)
+		{
+			// 暂停布局逻辑，提高性能并减少闪烁
+			chatPanel.SuspendLayout();
+
+			foreach (Control ctrl in chatPanel.Controls)
 			{
 				// 关键计算：Panel的内部宽度 - 控件的左右边距 - 滚动条预留宽度
 				// 如果没有滚动条，可以不减去 SystemInformation.VerticalScrollBarWidth
 				//ctrl.Width = ChatPanel.ClientSize.Width - ctrl.Margin.Horizontal;
-				ctrl.Width = PlannerChatPanel.ClientSize.Width;
-				PlannerChatPanel.HorizontalScroll.Enabled = false;
-				PlannerChatPanel.HorizontalScroll.Visible = false;
+				ctrl.Width = chatPanel.ClientSize.Width;
+				chatPanel.HorizontalScroll.Enabled = false;
+				chatPanel.HorizontalScroll.Visible = false;
 			}
 
-			PlannerChatPanel.ResumeLayout();
+			chatPanel.ResumeLayout();
 		}
 
 		/// <summary>

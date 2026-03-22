@@ -90,6 +90,12 @@ namespace SimpleAgent.Services
 				// 更新标签页状态为正在运行, 并跳转
 				agentTabs[agentType].SetRunning(true);
 				agentTabs[agentType].PerformClick();
+
+				// 滚动到最底部
+				var panel = chatPanels[agentType];
+				panel.SuspendLayout();
+				panel.VerticalScroll.Value = panel.VerticalScroll.Maximum;
+				panel.ResumeLayout();
 			}
 
 			// 如果已有进行中的消息则追加内容
@@ -106,8 +112,6 @@ namespace SimpleAgent.Services
 				Trace.WriteLine("[警告] 路由智能体消息不需要显示");
 				return -1;
 			}
-
-			Trace.WriteLine($"调用了工具: {line}");
 
 			// 如果之前没有进行中的消息则创建新消息
 			if (inChat[agentType] == null)

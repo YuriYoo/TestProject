@@ -383,8 +383,20 @@ namespace SimpleAgent.Services
 		{
 			Trace.WriteLine("正在路由...");
 			_routerAgent.AddUserMessage($"用户输入: {_context.OriginalRequest}");
-			var res = await _routerAgent.GetChatMessageContentAsync();
-			Trace.WriteLine($"路由消息: {res.Content}");
+
+			StringBuilder sb = new();
+			await foreach (var chunk in _routerAgent.GetStreamingChatMessageContentsAsync())
+			{
+				sb.Append(chunk.Content);
+
+				if (_currentState != WorkflowState.Routing)
+				{
+					Trace.WriteLine("计划已完成，尝试结束 Routing 对话...");
+					_routerAgent.AddDeveloperMessage("已经完成任务，立即停止对话。");
+				}
+
+			}
+			Trace.WriteLine($"路由消息: {sb}");
 		}
 
 		/// <summary>
@@ -604,7 +616,7 @@ namespace SimpleAgent.Services
 		private async Task HandleReviewingAsync()
 		{
 			Trace.WriteLine("Reviewer: 正在验收...");
-			_reviewerAgent.AddUserMessage($"原计划：{_context.DetailedPlan}\n开发者提交摘要：{_context.DeveloperSummary}");
+			_reviewerAgent.AddUserMessage($"【以下为原计划】\n\n{_context.DetailedPlan}\n\n\n\n【以下为开发者提交的摘要】\n\n{_context.DeveloperSummary}");
 
 			StringBuilder sb = new();
 			await foreach (var chunk in _reviewerAgent.GetStreamingChatMessageContentsAsync())
@@ -612,7 +624,7 @@ namespace SimpleAgent.Services
 				sb.Append(chunk.Content);
 				chatUIService.SendAIMessage(AgentType.Reviewer, chunk.Content ?? "");
 
-				if (_currentState != WorkflowState.Developing)
+				if (_currentState != WorkflowState.Reviewing)
 				{
 					Trace.WriteLine("审查已完成，主动中断 Reviewer 后续输出...");
 					break;
