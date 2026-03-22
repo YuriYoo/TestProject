@@ -1,6 +1,7 @@
 ﻿using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
+using OpenAI.Chat;
 using SimpleAgent.Services;
 using System;
 using System.Collections.Generic;
@@ -55,15 +56,42 @@ namespace SimpleAgent.Agents
 		}
 
 		/// <summary>
+		/// 添加系统消息
+		/// </summary>
+		/// <param name="message"></param>
+		public void AddSystemMessage(string message)
+		{
+			chatHistory.AddSystemMessage(message);
+		}
+
+		/// <summary>
+		/// 添加开发者消息
+		/// </summary>
+		/// <param name="message"></param>
+		public void AddDeveloperMessage(string message)
+		{
+			chatHistory.AddDeveloperMessage(message);
+		}
+
+		/// <summary>
 		/// 获取模型回复(异步流式输出)
 		/// </summary>
 		/// <returns></returns>
-		public async IAsyncEnumerable<StreamingChatMessageContent> GetChatMessageContentAsync()
+		public async IAsyncEnumerable<StreamingChatMessageContent> GetStreamingChatMessageContentsAsync()
 		{
 			await foreach (var chunk in chatCompletionService.GetStreamingChatMessageContentsAsync(chatHistory, settings, kernel))
 			{
 				yield return chunk;
 			}
+		}
+
+		/// <summary>
+		/// 获取模型回复(异步一次性输出)
+		/// </summary>
+		/// <returns></returns>
+		public async Task<Microsoft.SemanticKernel.ChatMessageContent> GetChatMessageContentAsync()
+		{
+			return await chatCompletionService.GetChatMessageContentAsync(chatHistory, settings, kernel);
 		}
 	}
 }

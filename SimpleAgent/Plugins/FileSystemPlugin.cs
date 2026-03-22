@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace SimpleAgent.Plugins
@@ -148,7 +149,7 @@ namespace SimpleAgent.Plugins
 		/// </summary>
 		[KernelFunction("append_file")]
 		[Description("向文件末尾追加内容，不存在则创建。")]
-		public async Task<string> AppendFile(
+		public async Task<string> AppendFileAsync(
 			[Description("目标文件路径")] string filePath,
 			[Description("要追加的内容")] string content)
 		{
@@ -165,6 +166,67 @@ namespace SimpleAgent.Plugins
 			catch (Exception ex)
 			{
 				return $"[错误] 追加文件失败: {ex.Message}";
+			}
+		}
+
+		[KernelFunction("edit_file")]
+		[Description("使用差异替换机制（Search/Replace）修改现有文件中的代码。")]
+		public async Task<string> EditFileAsync(
+		[Description("目标文件路径")] string filePath,
+		[Description("需要被替换的原文代码块（SEARCH）。必须提供足够的上下文以保证该代码块在文件中是唯一的。")] string searchBlock,
+		[Description("用于替换的新代码块（REPLACE）。")] string replaceBlock)
+		{
+			try
+			{
+				string fullPath = ResolvePath(filePath);
+				if (!File.Exists(fullPath)) return "[错误] 传入的文件路径不存在";
+
+				string fileContent = await File.ReadAllTextAsync(filePath);
+
+				// 尝试精确匹配
+				int matchCount = Regex.Matches(Regex.Escape(fileContent), Regex.Escape(searchBlock)).Count;
+
+				// 如果精确匹配失败，尝试统一换行符后再次匹配 (解决大模型输出 \n 但文件是 \r\n 的常见问题)
+				if (matchCount == 0)
+				{
+					string normalizedFile = fileContent.Replace("\r\n", "\n");
+					string normalizedSearch = searchBlock.Replace("\r\n", "\n");
+
+					matchCount = Regex.Matches(Regex.Escape(normalizedFile), Regex.Escape(normalizedSearch)).Count;
+
+					if (matchCount > 0)
+					{
+						fileContent = normalizedFile;
+						searchBlock = normalizedSearch;
+					}
+				}
+
+				// 根据匹配结果执行不同逻辑
+				if (matchCount == 0)
+				{
+					// 返回明确的错误信息给大模型，引导其重试
+					return $"[错误] 匹配失败。未在文件中找到提供的 SEARCH 块。请确保：\n" +
+						   $"1. SEARCH 块的代码与文件中的原文完全一致，包括空格和缩进。\n" +
+						   $"2. 不要省略任何中间的代码行，必须是连续的完整文本段落。";
+				}
+				else if (matchCount > 1)
+				{
+					// 如果找到多处，说明上下文不够，模型需要提供更多行来定位
+					return $"[错误] 找到 {matchCount} 处匹配的代码块。替换操作被中止，因为无法确定要替换哪一处。\n" +
+						   $"请在 SEARCH 块中包含更多上下文代码（例如目标代码的上一行和下一行），以确保匹配的唯一性。";
+				}
+				else
+				{
+					// 找到唯一的匹配项，执行替换
+					string updatedContent = fileContent.Replace(searchBlock, replaceBlock);
+					await File.WriteAllTextAsync(filePath, updatedContent);
+
+					return $"[成功] 成功修改了文件: {filePath}";
+				}
+			}
+			catch (Exception ex)
+			{
+				return $"[错误] 编辑文件失败: {ex.Message}";
 			}
 		}
 

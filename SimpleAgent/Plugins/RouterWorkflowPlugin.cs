@@ -21,7 +21,7 @@ namespace SimpleAgent.Plugins
 		public string RouteToPlanner()
 		{
 			OnRouteToPlanner?.Invoke();
-			return "[系统通知] 路由成功！请立即停止调用任何工具，并直接向用户回复：'已为您安排 Planner 进行需求规划'。";
+			return "[系统通知] 路由成功！请立即停止调用任何工具，并直接结束对话。";
 		}
 
 		[KernelFunction("route_to_developer")]
@@ -29,7 +29,7 @@ namespace SimpleAgent.Plugins
 		public string RouteToDeveloper()
 		{
 			OnRouteToDeveloper?.Invoke();
-			return "[系统通知] 路由成功！请立即停止调用任何工具，并直接向用户回复：'已为您安排 Developer 进入开发阶段'。";
+			return "[系统通知] 路由成功！请立即停止调用任何工具，并直接结束对话。";
 		}
 	}
 }

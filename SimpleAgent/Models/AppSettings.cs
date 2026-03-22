@@ -32,6 +32,18 @@ namespace SimpleAgent.Models
 		// 智能体配置
 		// ============================================================
 
+		/// <summary>命令行输出截断</summary>
+		public int TerminalTruncation { get; set; } = 5000;
+
+		/// <summary>命令行超时时间(毫秒)</summary>
+		public int TerminalTimeout { get; set; } = 60000;
+
+		/// <summary>Http响应截断</summary>
+		public int HttpTerminal { get; set; } = 3000;
+
+		/// <summary>Http请求超时时间</summary>
+		public int HttpTimeout { get; set; } = 15000;
+
 		/// <summary>是否启用多智能体协作模式（关闭则使用单一Agent）</summary>
 		public bool EnableMultiAgent { get; set; } = true;
 

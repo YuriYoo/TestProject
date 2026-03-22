@@ -24,20 +24,24 @@ namespace SimpleAgent.Agents
 # Objective
 根据用户的输入，判断请求的复杂度并进行分类。
 
+# Workflow
+1. 根据规则选择调用的工具。
+2. 结束对话。
+
 # Rules & Constraints
 1. 【关键指令】如果用户提出的是新功能、模糊的想法、或者需要拆解的大规模重构，你必须立即调用 `route_to_planner` 函数。
 2. 【关键指令】如果用户提出的是明确的简单修改、修复特定的Bug、或者单一的文件调整，你必须立即调用 `route_to_developer` 函数。
-3. 不要输出任何解释、不要与用户打招呼。
+3. 你只需要调用工具，不要输出任何解释、不要与用户打招呼、不要与用户对话。
 4. 你必须调用以下两个函数之一，且只能调用一次： `route_to_planner` 或 `route_to_developer` ";
 
 		public RouterAgent(KernelService kernelService, Action onRouteToPlanner, Action onRouteToDeveloper) : base(SystemPrompt)
 		{
 			kernel = kernelService.BuildKernel();
-			kernel.Plugins.AddFromObject(new RouterWorkflowPlugin { OnRouteToPlanner = onRouteToPlanner, OnRouteToDeveloper = onRouteToDeveloper }, "router_workflow");
+			kernel.Plugins.AddFromObject(new RouterWorkflowPlugin { OnRouteToPlanner = onRouteToPlanner, OnRouteToDeveloper = onRouteToDeveloper }, "workflow");
 
 			KernelFunction[] kernelFunctions = [
-				kernel.Plugins.GetFunction("router_workflow", "route_to_developer"),
-				kernel.Plugins.GetFunction("router_workflow", "route_to_planner"),
+				kernel.Plugins.GetFunction("workflow", "route_to_developer"),
+				kernel.Plugins.GetFunction("workflow", "route_to_planner"),
 			];
 
 			chatCompletionService = kernel.GetRequiredService<IChatCompletionService>();

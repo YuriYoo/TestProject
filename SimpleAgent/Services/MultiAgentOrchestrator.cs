@@ -1,9 +1,11 @@
 ﻿using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
+using Newtonsoft.Json.Linq;
 using SimpleAgent.Agents;
 using SimpleAgent.Models;
 using SimpleAgent.Plugins;
+using SimpleAgent.Reducer;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -74,38 +76,170 @@ namespace SimpleAgent.Services
 		}
 
 		/// <summary>
-		/// 向UI界面发送消息
-		/// </summary>
-		/// <param name="messageType"></param>
-		/// <param name="agentType"></param>
-		/// <param name="message"></param>
-		private void SendUIMessage(MessageType messageType, AgentType agentType, string message, bool addNewLine = false, Color? color = null)
-		{
-			chatUIService.SendMessage(messageType, agentType, message, addNewLine, color);
-		}
-
-		/// <summary>
 		/// 向UI界面发送工具调用消息（专门处理模型调用插件时的显示）
 		/// </summary>
 		/// <param name="agentType"></param>
 		/// <param name="name"></param>
 		/// <param name="arguments"></param>
-		private void SendToolMessage(AgentType agentType, string? name, string? arguments)
+		private int SendToolMessage(AgentType agentType, string? name, int line, string? arguments)
 		{
-			if (string.IsNullOrWhiteSpace(name))
+			string outstr;
+			JObject args = [];
+			try
 			{
-				SendUIMessage(MessageType.AI, agentType, $"[正在调用未知工具]", true, Color.Gray);
-				return;
+				if (line >= 0 && !string.IsNullOrWhiteSpace(arguments)) args = JObject.Parse(arguments);
 			}
-			if (string.IsNullOrEmpty(arguments) || arguments.Length <= 2)
+			catch (Exception)
 			{
-				arguments = "";
+				Trace.WriteLine($"工具参数解析失败: {arguments}");
 			}
-			else if (arguments.Length > 30)
+
+			switch (name)
 			{
-				arguments = $"{arguments[..30]}...}}";
+				case "file_system-read_file":
+					outstr = $"读取文件";
+					if (line >= 0)
+					{
+						var arg1 = args.TryGetValue("filePath", out var filePath) ? filePath.ToString() : "参数错误";
+						outstr = $"[ {outstr} 工具调用完成]  路径: {arg1}";
+					}
+					break;
+
+				case "file_system-list_directory":
+					outstr = $"获取文件列表";
+					if (line >= 0)
+					{
+						var arg1 = args.TryGetValue("directoryPath", out var directoryPath) ? directoryPath.ToString() : "参数错误";
+						outstr = $"[ {outstr} 工具调用完成]  路径: {arg1}";
+					}
+					break;
+
+				case "file_system-path_exists":
+					outstr = $"路径判断";
+					if (line >= 0)
+					{
+						var arg1 = args.TryGetValue("path", out var path) ? path.ToString() : "参数错误";
+						outstr = $"[ {outstr} 工具调用完成]  路径: {arg1}";
+					}
+					break;
+
+				case "file_system-get_working_directory":
+					outstr = $"获取工作目录";
+					if (line >= 0)
+					{
+						outstr = $"[ {outstr} 工具调用完成]";
+					}
+					break;
+
+				case "file_system-create_directory":
+					outstr = $"创建目录";
+					if (line >= 0)
+					{
+						var arg1 = args.TryGetValue("directoryPath", out var directoryPath) ? directoryPath.ToString() : "参数错误";
+						outstr = $"[ {outstr} 工具调用完成]  路径: {arg1}";
+					}
+					break;
+
+				case "file_system-delete_file":
+					outstr = $"删除文件";
+					if (line >= 0)
+					{
+						var arg1 = args.TryGetValue("filePath", out var filePath) ? filePath.ToString() : "参数错误";
+						outstr = $"[ {outstr} 工具调用完成]  路径: {arg1}";
+					}
+					break;
+
+				case "file_system-append_file":
+					outstr = $"向文件追加内容";
+					if (line >= 0)
+					{
+						var arg1 = args.TryGetValue("content", out var content) ? content.ToString().Length + " 字节" : "参数错误";
+						var arg2 = args.TryGetValue("filePath", out var filePath) ? filePath : "参数错误";
+						outstr = $"[ {outstr} 工具调用完成]  追加内容长度: {arg1}  路径: {arg2}";
+					}
+					break;
+
+				case "file_system-write_file":
+					outstr = $"全量写入文件";
+					if (line >= 0)
+					{
+						var arg1 = args.TryGetValue("content", out var content) ? content.ToString().Length + " 字节" : "参数错误";
+						var arg2 = args.TryGetValue("filePath", out var filePath) ? filePath : "参数错误";
+						outstr = $"[ {outstr} 工具调用完成]  内容长度: {arg1}  路径: {arg2}";
+					}
+					break;
+
+				case "file_system-edit_file":
+					outstr = $"编辑文件";
+					if (line >= 0)
+					{
+						var arg1 = args.TryGetValue("filePath", out var filePath) ? filePath : "参数错误";
+						var arg2 = args.TryGetValue("searchBlock", out var searchBlock) ? searchBlock.ToString().Length + " 字节" : "参数错误";
+						var arg3 = args.TryGetValue("replaceBlock", out var replaceBlock) ? replaceBlock.ToString().Length + " 字节" : "参数错误";
+						outstr = $"[ {outstr} 工具调用完成]  原始内容长度: {arg2}  修改内容长度: {arg3}  路径: {arg1}";
+					}
+					break;
+
+				case "terminal-execute_command":
+					outstr = $"执行命令";
+					if (line >= 0)
+					{
+						var arg1 = args.TryGetValue("command", out var command) ? command.ToString() : "参数错误";
+						outstr = $"[ {outstr} 工具调用完成]  命令: {arg1}";
+					}
+					break;
+
+				case "terminal-start_background_service":
+					outstr = $"启动后台服务";
+					if (line >= 0)
+					{
+						var arg1 = args.TryGetValue("serviceId", out var serviceId) ? serviceId.ToString() : "参数错误";
+						var arg2 = args.TryGetValue("command", out var command) ? command.ToString() : "参数错误";
+						outstr = $"[ {outstr} 工具调用完成]  服务ID: {arg1}  命令: {arg2}";
+					}
+					break;
+
+				case "terminal-stop_background_service":
+					outstr = $"停止后台服务";
+					if (line >= 0)
+					{
+						var arg1 = args.TryGetValue("serviceId", out var serviceId) ? serviceId.ToString() : "参数错误";
+						outstr = $"[ {outstr} 工具调用完成]  服务ID: {arg1}";
+					}
+					break;
+
+				case "terminal-get_service_logs":
+					outstr = $"读取服务日志";
+					if (line >= 0)
+					{
+						var arg1 = args.TryGetValue("serviceId", out var serviceId) ? serviceId.ToString() : "参数错误";
+						outstr = $"[ {outstr} 工具调用完成]  服务ID: {arg1}";
+					}
+					break;
+
+				case "http_test-send_http_request":
+					outstr = $"发送HTTP请求";
+					if (line >= 0)
+					{
+						var arg1 = args.TryGetValue("method", out var method) ? method.ToString() : "参数错误";
+						var arg2 = args.TryGetValue("url", out var url) ? url.ToString() : "参数错误";
+						outstr = $"[ {outstr} 工具调用完成]  方法: {arg1}  URL: {arg2}";
+					}
+					break;
+
+				default:
+					if (name != null && name.StartsWith("workflow-"))
+					{
+						outstr = line < 0 ? "切换智能体" : "[切换智能体完成]";
+					}
+					else
+					{
+						outstr = line < 0 ? $"未知 {name}" : $"[未知工具 {name} 调用完成]";
+					}
+					break;
 			}
-			SendUIMessage(MessageType.AI, agentType, $"[正在调用工具] {name} {arguments}", true, Color.Gray);
+
+			return chatUIService.SendToolMessage(agentType, outstr, line);
 		}
 
 		/// <summary>
@@ -156,6 +290,12 @@ namespace SimpleAgent.Services
 					// 开发测试
 					case WorkflowState.Developing:
 						await HandleDevelopingAsync();
+
+						var kernel = kernelService.BuildKernel();
+						var chatService = kernel.GetRequiredService<IChatCompletionService>();
+						var myReducer = new CustomChatHistoryReducer(chatService);
+						await _developerAgent.chatHistory.ReduceInPlaceAsync(myReducer, CancellationToken.None);
+
 						SaveChatHistory(AgentType.Developer, _developerAgent.chatHistory);
 						break;
 
@@ -243,21 +383,8 @@ namespace SimpleAgent.Services
 		{
 			Trace.WriteLine("正在路由...");
 			_routerAgent.AddUserMessage($"用户输入: {_context.OriginalRequest}");
-
-			StringBuilder sb = new();
-			await foreach (var chunk in _routerAgent.GetChatMessageContentAsync())
-			{
-				sb.Append(chunk.Content);
-
-				// 如果插件回调已经将状态改为了非 Routing 立即强制跳出循环。这会直接 Dispose 底层的异步流，强行掐断大模型的无限调用！
-				if (_currentState != WorkflowState.Routing)
-				{
-					Trace.WriteLine("路由目标已确定，主动中断 Router 后续输出...");
-					break;
-				}
-			}
-
-			Trace.WriteLine($"路由消息: {sb}");
+			var res = await _routerAgent.GetChatMessageContentAsync();
+			Trace.WriteLine($"路由消息: {res.Content}");
 		}
 
 		/// <summary>
@@ -268,8 +395,13 @@ namespace SimpleAgent.Services
 		{
 			Trace.WriteLine("Planner: 正在与您规划需求...");
 
+			string? currentCallId = null;
+			string? currentFunctionName = null;
+			int currentLine = -1;
+			StringBuilder argumentsBuilder = new();
+
 			StringBuilder sb = new();
-			await foreach (var chunk in _plannerAgent.GetChatMessageContentAsync())
+			await foreach (var chunk in _plannerAgent.GetStreamingChatMessageContentsAsync())
 			{
 				sb.Append(chunk.Content);
 				//SendUIMessage(MessageType.AI, AgentType.Planner, chunk.Content ?? "");
@@ -282,18 +414,38 @@ namespace SimpleAgent.Services
 						// 普通的消息文本内容
 						case StreamingTextContent textContent:
 							//sb.Append(textContent.Text);
-							SendUIMessage(MessageType.AI, AgentType.Planner, textContent.Text ?? "");
+							chatUIService.SendAIMessage(AgentType.Planner, textContent.Text ?? "");
 							break;
 
-						// 工具/函数调用的内容（模型决定调用插件时会触发）
+						// 工具/函数调用的内容（模型决定调用插件时会触发）这里会流式输出函数名、参数等, Arguments 参数是一段段 JSON 字符串流式到达的
 						case StreamingFunctionCallUpdateContent functionCallUpdate:
-							// 这里会流式输出函数名、参数等, Arguments 参数是一段段 JSON 字符串流式到达的
-							SendToolMessage(AgentType.Planner, functionCallUpdate.Name, functionCallUpdate.Arguments);
+							// 如果遇到了新的 CallId，说明开始了一个新的工具调用
+							if (!string.IsNullOrEmpty(functionCallUpdate.CallId) && functionCallUpdate.CallId != currentCallId)
+							{
+								// 如果之前已经有未结束的调用（并行调用场景），在这里触发上一个调用的结束
+								if (currentCallId != null)
+								{
+									SendToolMessage(AgentType.Planner, currentFunctionName, currentLine, argumentsBuilder.ToString());
+								}
+
+								// 记录新调用的状态
+								currentCallId = functionCallUpdate.CallId;
+								currentFunctionName = functionCallUpdate.Name;
+								argumentsBuilder.Clear();
+
+								currentLine = SendToolMessage(AgentType.Planner, functionCallUpdate.Name, -1, functionCallUpdate.Arguments);
+							}
+
+							// 持续拼接参数 (JSON 片段)
+							if (functionCallUpdate.Arguments != null)
+							{
+								argumentsBuilder.Append(functionCallUpdate.Arguments);
+							}
 							break;
 
 						// 你还可以按需处理其他类型，例如 StreamingFileReferenceContent 等
 						default:
-							SendUIMessage(MessageType.AI, AgentType.Planner, $"未知的流内容: {item.GetType()}", true, Color.Red);
+							chatUIService.SendAIMessage(AgentType.Planner, $"未知的流内容: {item.GetType()}");
 							break;
 					}
 				}
@@ -305,11 +457,17 @@ namespace SimpleAgent.Services
 				}
 			}
 
+			// 【判断结束】：流结束时，如果还有缓存的 CallId，说明该工具调用的参数已经全部接收完毕
+			if (currentCallId != null)
+			{
+				SendToolMessage(AgentType.Planner, currentFunctionName, currentLine, argumentsBuilder.ToString());
+			}
+
 			if (sb.Length > 0)
 			{
 				_plannerAgent.AddAssistantMessage(sb.ToString());
 			}
-			SendUIMessage(MessageType.System, AgentType.Planner, "END");
+			chatUIService.SendSystemMessage(AgentType.Planner);
 
 			// 如果状态变了（因为模型调用了 FinalizePlan 触发了回调），循环会进入下一阶段
 			// 如果没变，说明还需要向用户提问，可以在这里挂起，等待用户输入并加入 _plannerHistory
@@ -360,15 +518,19 @@ namespace SimpleAgent.Services
 			}
 			else
 			{
-				_developerAgent.AddUserMessage("【系统提示】如果你确定已经完成计划，也已经进行过测试且编译没有问题，请调用 `submit_for_review` 提交审查。如果没有完成任务，请不要停止，根据上一个消息继续你的工作。");
+				_developerAgent.AddUserMessage("继续");
+				_developerAgent.AddDeveloperMessage("如果你确定已经完成计划，也已经进行过测试且编译没有问题，请调用 `submit_for_review` 提交审查。如果没有完成任务请不要停止，继续完成你的工作。");
 			}
 
+			string? currentCallId = null;
+			string? currentFunctionName = null;
+			int currentLine = -1;
+			StringBuilder argumentsBuilder = new();
+
 			StringBuilder sb = new();
-			await foreach (var chunk in _developerAgent.GetChatMessageContentAsync())
+			await foreach (var chunk in _developerAgent.GetStreamingChatMessageContentsAsync())
 			{
-				//Trace.WriteLine($"Developer 输出: Role:{(chunk.Role == null ? "Unknown" : chunk.Role.Value)}  Items:{string.Join(',', chunk.Items)}  Meta:{string.Join(',', chunk.Metadata)}");
 				sb.Append(chunk.Content);
-				//SendUIMessage(MessageType.AI, AgentType.Developer, chunk.Content ?? "");
 
 				// 遍历当前 chunk 中的所有内容项
 				foreach (var item in chunk.Items)
@@ -378,18 +540,39 @@ namespace SimpleAgent.Services
 						// 普通的消息文本内容
 						case StreamingTextContent textContent:
 							//sb.Append(textContent.Text);
-							SendUIMessage(MessageType.AI, AgentType.Developer, textContent.Text ?? "");
+							chatUIService.SendAIMessage(AgentType.Developer, textContent.Text ?? "");
 							break;
 
-						// 工具/函数调用的内容（模型决定调用插件时会触发）
+						// 工具/函数调用的内容（模型决定调用插件时会触发）这里会流式输出函数名、参数等, Arguments 参数是一段段 JSON 字符串流式到达的
 						case StreamingFunctionCallUpdateContent functionCallUpdate:
-							// 这里会流式输出函数名、参数等, Arguments 参数是一段段 JSON 字符串流式到达的
-							SendToolMessage(AgentType.Developer, functionCallUpdate.Name, functionCallUpdate.Arguments);
+
+							// 如果遇到了新的 CallId，说明开始了一个新的工具调用
+							if (!string.IsNullOrEmpty(functionCallUpdate.CallId) && functionCallUpdate.CallId != currentCallId)
+							{
+								// 如果之前已经有未结束的调用（并行调用场景），在这里触发上一个调用的结束
+								if (currentCallId != null)
+								{
+									SendToolMessage(AgentType.Developer, currentFunctionName, currentLine, argumentsBuilder.ToString());
+								}
+
+								// 记录新调用的状态
+								currentCallId = functionCallUpdate.CallId;
+								currentFunctionName = functionCallUpdate.Name;
+								argumentsBuilder.Clear();
+
+								currentLine = SendToolMessage(AgentType.Developer, functionCallUpdate.Name, -1, functionCallUpdate.Arguments);
+							}
+
+							// 持续拼接参数 (JSON 片段)
+							if (functionCallUpdate.Arguments != null)
+							{
+								argumentsBuilder.Append(functionCallUpdate.Arguments);
+							}
 							break;
 
 						// 你还可以按需处理其他类型，例如 StreamingFileReferenceContent 等
 						default:
-							SendUIMessage(MessageType.AI, AgentType.Developer, $"未知的流内容: {item.GetType()}", true, Color.Red);
+							chatUIService.SendAIMessage(AgentType.Developer, $"未知的流内容: {item.GetType()}");
 							break;
 					}
 				}
@@ -401,11 +584,17 @@ namespace SimpleAgent.Services
 				}
 			}
 
+			// 【判断结束】：流结束时，如果还有缓存的 CallId，说明该工具调用的参数已经全部接收完毕
+			if (currentCallId != null || currentLine >= 0)
+			{
+				SendToolMessage(AgentType.Developer, currentFunctionName, currentLine, argumentsBuilder.ToString());
+			}
+
 			if (sb.Length > 0)
 			{
 				_developerAgent.AddAssistantMessage(sb.ToString());
 			}
-			SendUIMessage(MessageType.System, AgentType.Developer, "END");
+			chatUIService.SendSystemMessage(AgentType.Developer);
 		}
 
 		/// <summary>
@@ -418,10 +607,10 @@ namespace SimpleAgent.Services
 			_reviewerAgent.AddUserMessage($"原计划：{_context.DetailedPlan}\n开发者提交摘要：{_context.DeveloperSummary}");
 
 			StringBuilder sb = new();
-			await foreach (var chunk in _reviewerAgent.GetChatMessageContentAsync())
+			await foreach (var chunk in _reviewerAgent.GetStreamingChatMessageContentsAsync())
 			{
 				sb.Append(chunk.Content);
-				SendUIMessage(MessageType.AI, AgentType.Reviewer, chunk.Content ?? "");
+				chatUIService.SendAIMessage(AgentType.Reviewer, chunk.Content ?? "");
 
 				if (_currentState != WorkflowState.Developing)
 				{
@@ -434,7 +623,7 @@ namespace SimpleAgent.Services
 			{
 				_reviewerAgent.AddAssistantMessage(sb.ToString());
 			}
-			SendUIMessage(MessageType.System, AgentType.Reviewer, "END");
+			chatUIService.SendSystemMessage(AgentType.Reviewer);
 		}
 	}
 }

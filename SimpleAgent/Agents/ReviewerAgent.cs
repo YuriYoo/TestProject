@@ -36,14 +36,15 @@ namespace SimpleAgent.Agents
 		public ReviewerAgent(KernelService kernelService, Action onReviewPassed, Action<string> onReviewFailed) : base(SystemPrompt)
 		{
 			kernel = kernelService.BuildKernel();
-			kernel.Plugins.AddFromObject(new ReviewerWorkflowPlugin { OnReviewPassed = onReviewPassed, OnReviewFailed = onReviewFailed }, "reviewer_workflow");
+			kernel.Plugins.AddFromObject(new ReviewerWorkflowPlugin { OnReviewPassed = onReviewPassed, OnReviewFailed = onReviewFailed }, "workflow");
 
 			KernelFunction[] kernelFunctions = [
-				kernel.Plugins.GetFunction("file_System", "read_file"),
-				kernel.Plugins.GetFunction("file_System", "list_directory"),
-				kernel.Plugins.GetFunction("file_System", "get_working_directory"),
-				kernel.Plugins.GetFunction("reviewer_workflow", "pass_review"),
-				kernel.Plugins.GetFunction("reviewer_workflow", "fail_review"),
+				kernel.Plugins.GetFunction("file_system", "read_file"),
+				kernel.Plugins.GetFunction("file_system", "list_directory"),
+				kernel.Plugins.GetFunction("file_system", "path_exists"),
+				kernel.Plugins.GetFunction("file_system", "get_working_directory"),
+				kernel.Plugins.GetFunction("workflow", "pass_review"),
+				kernel.Plugins.GetFunction("workflow", "fail_review"),
 				kernel.Plugins.GetFunction("http_test", "send_http_request"),
 			];
 

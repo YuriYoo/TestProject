@@ -20,74 +20,17 @@ namespace SimpleAgent.UserControls
 			InitializeComponent();
 		}
 
-		public ChatMessageItem(MessageType type)
+		public ChatMessageItem(MessageType type, string message = "")
 		{
 			this.type = type;
 			InitializeComponent();
 			UpdateRole(type);
-			if (type == MessageType.AI)
+			ChatMessage.ContentsResized += ChatMessage_ContentsResized;
+			ChatMessage.AppendText(message);
+			/*if (type == MessageType.AI)
 			{
 				AppendText("思考中...", false, Color.DarkOliveGreen);
-			}
-			ChatMessage.ContentsResized += ChatMessage_ContentsResized;
-		}
-
-		public void AppendText(string text, bool addNewLine = false, Color? color = null)
-		{
-			if (type == MessageType.AI && ChatMessage.Text == "思考中...")
-			{
-				ClearText();
-			}
-
-			if (addNewLine && !IsTextEndingWithNewLine())
-			{
-				ChatMessage.AppendText(Environment.NewLine);
-			}
-
-			if (color.HasValue)
-			{
-				// 记住当前的默认颜色
-				Color defaultColor = ChatMessage.ForeColor;
-
-				// 将光标定位到文本末尾
-				ChatMessage.Select(ChatMessage.TextLength, 0);
-
-				// 设置将要插入的文本的颜色
-				ChatMessage.SelectionColor = color.Value;
-
-				ChatMessage.AppendText(text);
-
-				// 将光标处的新输入颜色恢复为默认颜色，防止影响后续追加或用户键盘输入的文本
-				ChatMessage.Select(ChatMessage.TextLength, 0);
-				ChatMessage.SelectionColor = defaultColor;
-			}
-			else
-			{
-				ChatMessage.AppendText(text);
-			}
-
-			if (addNewLine)
-			{
-				ChatMessage.AppendText(Environment.NewLine);
-			}
-		}
-
-		public void ClearText()
-		{
-			ChatMessage.Clear();
-		}
-
-		/// <summary>
-		/// 判断最后一个字符是否是换行符
-		/// </summary>
-		/// <returns></returns>
-		private bool IsTextEndingWithNewLine()
-		{
-			if (ChatMessage.TextLength == 0) return true;
-
-			// 检查最后一个字符是不是换行符 \n 或 \r
-			char lastChar = ChatMessage.Text[ChatMessage.TextLength - 1];
-			return lastChar == '\n' || lastChar == '\r';
+			}*/
 		}
 
 		/// <summary>

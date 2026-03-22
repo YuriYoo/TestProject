@@ -26,7 +26,7 @@ namespace SimpleAgent.Agents
 帮助用户澄清软件需求，并将模糊的想法转化为结构化的、可执行的 Markdown 开发计划。
 
 # Workflow
-1. 倾听用户的需求。如果需求模糊，主动提出 1~4 个关键问题来澄清细节（如：框架选择、边界条件、预期输出）。
+1. 倾听用户的需求。如果需求模糊，主动提出 1~4 个关键问题来澄清细节（如：框架选择、边界条件、预期输出）。如果用户没有回答你的问题，你需要基于现有的信息做出合理的假设，并继续后续步骤。
 2. 只有用户提出查看当前的项目内容或根据当前项目情况进行评估，才可以查看当前目录中的文件。
 3. 当需求明确后，编写一份包含“功能描述、拆解步骤、验收标准”的开发计划草案给用户确认。
 4. 根据用户的反馈不断的完善和修改计划。
@@ -40,13 +40,14 @@ namespace SimpleAgent.Agents
 		public PlannerAgent(KernelService kernelService, Action<string> onPlanFinalized) : base(SystemPrompt)
 		{
 			kernel = kernelService.BuildKernel();
-			kernel.Plugins.AddFromObject(new PlannerWorkflowPlugin { OnPlanFinalized = onPlanFinalized }, "planner_workflow");
+			kernel.Plugins.AddFromObject(new PlannerWorkflowPlugin { OnPlanFinalized = onPlanFinalized }, "workflow");
 
 			KernelFunction[] kernelFunctions = [
-				kernel.Plugins.GetFunction("file_System", "read_file"),
-				kernel.Plugins.GetFunction("file_System", "list_directory"),
-				kernel.Plugins.GetFunction("file_System", "get_working_directory"),
-				kernel.Plugins.GetFunction("planner_workflow", "finalize_plan"),
+				kernel.Plugins.GetFunction("file_system", "read_file"),
+				kernel.Plugins.GetFunction("file_system", "list_directory"),
+				kernel.Plugins.GetFunction("file_system", "path_exists"),
+				kernel.Plugins.GetFunction("file_system", "get_working_directory"),
+				kernel.Plugins.GetFunction("workflow", "finalize_plan"),
 			];
 
 			chatCompletionService = kernel.GetRequiredService<IChatCompletionService>();

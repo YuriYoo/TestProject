@@ -1,4 +1,5 @@
 ﻿using Microsoft.SemanticKernel;
+using SimpleAgent.Services;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -35,7 +36,7 @@ namespace SimpleAgent.Plugins
 					if (_logs.Length == 0) return "暂无新日志产生。";
 					var currentLogs = _logs.ToString();
 					_logs.Clear(); // 阅后即焚，清空缓冲区
-					return currentLogs;
+					return TruncateByChars(currentLogs, AppSettingsService.Settings.TerminalTruncation);
 				}
 			}
 		}
@@ -171,8 +172,8 @@ namespace SimpleAgent.Plugins
 				var outputTask = process.StandardOutput.ReadToEndAsync();
 				var errorTask = process.StandardError.ReadToEndAsync();
 
-				// 使用 CancellationToken 实现 60 秒异步超时控制
-				using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+				// 使用 CancellationToken 实现异步超时控制
+				using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(AppSettingsService.Settings.TerminalTimeout));
 
 				try
 				{
@@ -183,7 +184,7 @@ namespace SimpleAgent.Plugins
 				{
 					// 超时触发，强制结束进程树 (包含可能衍生出的子进程)
 					process.Kill(true);
-					return "[错误] 命令运行超过了60秒, 已自动终止。";
+					return $"[错误] 命令运行超过了{AppSettingsService.Settings.TerminalTimeout}秒, 已自动终止。";
 				}
 
 				// 确保完整读取输出流
@@ -199,7 +200,7 @@ namespace SimpleAgent.Plugins
 				else
 					sb.AppendLine($"[状态] 命令以错误码 {process.ExitCode} 退出");
 
-				return sb.ToString();
+				return TruncateByChars(sb.ToString(), AppSettingsService.Settings.TerminalTruncation);
 			}
 			catch (Exception ex)
 			{
@@ -226,6 +227,28 @@ namespace SimpleAgent.Plugins
 				StandardOutputEncoding = Encoding.UTF8,
 				StandardErrorEncoding = Encoding.UTF8,
 			};
+		}
+
+		/// <summary>
+		/// 保留字符串的指定数量的字符
+		/// 将保留 x / 2 个字符在开头，x / 2 个字符在结尾，中间用提示信息替代
+		/// </summary>
+		/// <param name="text"></param>
+		/// <param name="x"></param>
+		/// <returns></returns>
+		private static string TruncateByChars(string text, int x)
+		{
+			// 如果字符串为空，或者总长度还没有x长，则直接返回原字符串
+			if (string.IsNullOrEmpty(text) || text.Length <= x)
+			{
+				return text;
+			}
+
+			int half = x / 2;
+			string head = text.Substring(0, half);
+			string tail = text.Substring(text.Length - half);
+
+			return $"{head}\n...[内容过长，已被系统隐藏 {text.Length - x} 个字符]...\n{tail}";
 		}
 	}
 }

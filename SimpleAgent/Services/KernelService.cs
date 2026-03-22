@@ -23,9 +23,6 @@ namespace SimpleAgent.Services
 	/// </summary>
 	public class KernelService
 	{
-		/// <summary>当前应用设置</summary>
-		private AppSettings _settings;
-
 		/// <summary>http客户端</summary>
 		private HttpClient _httpClient;
 
@@ -35,15 +32,15 @@ namespace SimpleAgent.Services
 		//private ILoggerFactory _loggerFactory;
 
 		/// <summary>初始化KernelService</summary>
-		public KernelService(AppSettings settings/*, ILoggerFactory loggerFactory*/)
+		public KernelService(/*, ILoggerFactory loggerFactory*/)
 		{
-			if (string.IsNullOrEmpty(settings.ApiBaseUrl)) throw new InvalidOperationException("必须填写API调用地址");
+			if (string.IsNullOrEmpty(AppSettingsService.Settings.ApiBaseUrl)) throw new InvalidOperationException("必须填写API调用地址");
 
 			//_loggerFactory = loggerFactory;
 
 			var handler = new HttpLoggingHandler(new HttpClientHandler());
-			_httpClient = new(handler) { BaseAddress = new Uri(settings.ApiBaseUrl) };
-			UpdateSettings(settings);
+			_httpClient = new(handler) { BaseAddress = new Uri(AppSettingsService.Settings.ApiBaseUrl) };
+			UpdateSettings();
 		}
 
 		/// <summary>
@@ -59,20 +56,20 @@ namespace SimpleAgent.Services
 			// 根据提供商类型注册不同的Chat Completion服务
 
 			// OpenAI官方API，或自定义端点（Ollama、OpenRouter、国内服务商等）
-			//builder.AddOpenAIChatCompletion(_settings.ModelId, _settings.ApiKey, httpClient: CreateHttpClientWithBaseUrl(_settings.ApiBaseUrl));
+			//builder.AddOpenAIChatCompletion(AppSettingsService.Settings.ModelId, AppSettingsService.Settings.ApiKey, httpClient: CreateHttpClientWithBaseUrl(AppSettingsService.Settings.ApiBaseUrl));
 
 			// 微软Azure OpenAI服务
-			//builder.AddAzureOpenAIChatCompletion(deploymentName: _settings.AzureDeploymentName, endpoint: _settings.AzureEndpoint, apiKey: _settings.ApiKey);
+			//builder.AddAzureOpenAIChatCompletion(deploymentName: AppSettingsService.Settings.AzureDeploymentName, endpoint: AppSettingsService.Settings.AzureEndpoint, apiKey: AppSettingsService.Settings.ApiKey);
 
 			// 自定义兼容端点
-			builder.AddOpenAIChatCompletion(_settings.ModelId, _settings.ApiKey, httpClient: _httpClient);
-			//builder.AddOpenAIChatCompletion(_settings.ModelId, new Uri(_settings.ApiBaseUrl), _settings.ApiKey);
+			builder.AddOpenAIChatCompletion(AppSettingsService.Settings.ModelId, AppSettingsService.Settings.ApiKey, httpClient: _httpClient);
+			//builder.AddOpenAIChatCompletion(AppSettingsService.Settings.ModelId, new Uri(AppSettingsService.Settings.ApiBaseUrl), AppSettingsService.Settings.ApiKey);
 
 			// 将自定义的日志拦截器注册到服务中
 			builder.Services.AddSingleton<IFunctionInvocationFilter, FunctionLoggingFilter>();
 
 			builder.Plugins.AddFromType<HttpTestPlugin>("http_test");
-			builder.Plugins.AddFromObject(new FileSystemPlugin(_workingDirectory), "file_System");
+			builder.Plugins.AddFromObject(new FileSystemPlugin(_workingDirectory), "file_system");
 			builder.Plugins.AddFromObject(new TerminalPlugin(_workingDirectory), "terminal");
 
 			// 构建Kernel
@@ -96,10 +93,9 @@ namespace SimpleAgent.Services
 		/// <summary>
 		/// 更新设置（需要重新构建Kernel）
 		/// </summary>
-		public void UpdateSettings(AppSettings settings)
+		public void UpdateSettings()
 		{
-			_settings = settings;
-			SetWorkingDirectory(settings.WorkingDirectory);
+			SetWorkingDirectory(AppSettingsService.Settings.WorkingDirectory);
 		}
 	}
 }

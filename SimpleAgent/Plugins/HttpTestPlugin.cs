@@ -1,4 +1,5 @@
 ﻿using Microsoft.SemanticKernel;
+using SimpleAgent.Services;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -22,7 +23,7 @@ namespace SimpleAgent.Plugins
 			// 复用 HttpClient 以提高性能，并设置严格的超时时间，防止被死锁的服务卡住
 			_httpClient = new HttpClient
 			{
-				Timeout = TimeSpan.FromSeconds(15)
+				Timeout = TimeSpan.FromSeconds(AppSettingsService.Settings.HttpTimeout)
 			};
 		}
 
@@ -90,10 +91,10 @@ namespace SimpleAgent.Plugins
 				// 读取响应体
 				string responseBody = await response.Content.ReadAsStringAsync();
 
-				// 限制响应体长度，防止 AI 上下文被超长返回结果撑爆 (限制在 3000 字符)
-				if (responseBody.Length > 3000)
+				// 限制响应体长度，防止 AI 上下文被超长返回结果撑爆
+				if (responseBody.Length > AppSettingsService.Settings.HttpTerminal)
 				{
-					responseBody = string.Concat(responseBody.AsSpan(0, 3000), "\n...[内容过长，已被系统截断]...");
+					responseBody = string.Concat(responseBody.AsSpan(0, AppSettingsService.Settings.HttpTerminal), "\n...[内容过长，已被系统截断]...");
 				}
 
 				// 拼装友好的返回结果给 AI
@@ -110,7 +111,7 @@ namespace SimpleAgent.Plugins
 			}
 			catch (TaskCanceledException)
 			{
-				return $"[错误] 请求超时 (15秒)。可能原因：服务未启动、端口被防火墙拦截，或者该接口发生死锁未返回任何数据。";
+				return $"[错误] 请求超时 ({AppSettingsService.Settings.HttpTimeout}秒)。可能原因：服务未启动、端口被防火墙拦截，或者该接口发生死锁未返回任何数据。";
 			}
 			catch (HttpRequestException ex)
 			{

@@ -28,7 +28,6 @@ namespace SimpleAgent
 			}
 		}
 
-		private AppSettingsService settingsService;
 		private ChatUIService chatUIService;
 		private KernelService kernelService;
 		private MultiAgentOrchestrator multiAgentOrchestrator;
@@ -38,12 +37,11 @@ namespace SimpleAgent
 			InitializeComponent();
 			InitializeAgentTab();
 
-			settingsService = new AppSettingsService();
-			settingsService.Load();
-			settingsService.Save(settingsService.Settings);
+			AppSettingsService.Load();
+			AppSettingsService.Save();
 
 			chatUIService = new(this);
-			kernelService = new(settingsService.Settings/*, loggerFactory*/);
+			kernelService = new(/*, loggerFactory*/);
 			multiAgentOrchestrator = new(kernelService, chatUIService, this);
 
 			// 设置自定义渲染器
@@ -70,7 +68,7 @@ namespace SimpleAgent
 			if (string.IsNullOrEmpty(text)) return;
 
 			// 显示用户输入
-			chatUIService.SendMessage(MessageType.User, AgentType.Planner, text);
+			chatUIService.SendUserMessage(AgentType.Planner, text);
 			UserInput.Clear();
 
 			// 禁用按钮，防止 AI 回复期间重复点击
@@ -84,9 +82,8 @@ namespace SimpleAgent
 			{
 				isStart = true;
 				await multiAgentOrchestrator.RunWorkflowAsync(text);
+				RecoveryState();
 			}
-
-			RecoveryState();
 		}
 
 		public void RecoveryState()
