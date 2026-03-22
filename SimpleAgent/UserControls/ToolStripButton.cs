@@ -10,7 +10,7 @@ namespace SimpleAgent.UserControls
 {
 	[ToolboxItem(true)]
 	[ToolboxBitmap(typeof(Button))]
-	[ToolStripItemDesignerAvailability(ToolStripItemDesignerAvailability.MenuStrip)]
+	[ToolStripItemDesignerAvailability(ToolStripItemDesignerAvailability.All)]
 	public class ToolStripButton : ToolStripControlHost
 	{
 		private Button host;

@@ -20,7 +20,7 @@ namespace SimpleAgent.Renderer
 		private Brush itemBackColorBrush = Brushes.Transparent;
 
 		/// <summary>选中时背景画刷</summary>
-		private Brush itemSelectedBackColorBrush = Brushes.White;
+		private Brush itemSelectedBackColorBrush = Brushes.Gainsboro;
 
 		/// <summary>按下状态的边框画笔</summary>
 		private Pen pressedBorderPen = Pens.Gray;
@@ -60,13 +60,13 @@ namespace SimpleAgent.Renderer
 		/// 重写菜单边框绘制
 		/// </summary>
 		/// <param name="e"></param>
-		protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e)
+		/*protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e)
 		{
 			// 不调用 base.OnRenderToolStripBorder(e); 从而移除默认的全框线
-
+			base.OnRenderToolStripBorder(e);
 			// 绘制底部的直线，减去线条宽度偏移以确保线完整显示在控件范围内
-			e.Graphics.DrawLine(bottomBorderPen, 0, e.ToolStrip.Height - 1, e.ToolStrip.Width, e.ToolStrip.Height - 1);
-		}
+			//e.Graphics.DrawLine(bottomBorderPen, 0, e.ToolStrip.Height - 1, e.ToolStrip.Width, e.ToolStrip.Height - 1);
+		}*/
 
 		/// <summary>
 		/// 重写菜单项文字绘制

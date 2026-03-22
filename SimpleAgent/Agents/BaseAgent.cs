@@ -5,6 +5,7 @@ using OpenAI.Chat;
 using SimpleAgent.Services;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -31,9 +32,21 @@ namespace SimpleAgent.Agents
 		protected const int ReviewerSeed = 400363365;
 		protected const int RouterSeed = 189011865;
 
+		private readonly string systemPrompt;
+
 		public BaseAgent(string systemPrompt)
 		{
 			chatHistory = [];
+			this.systemPrompt = systemPrompt;
+			chatHistory.AddSystemMessage(systemPrompt);
+		}
+
+		/// <summary>
+		/// 重置对话历史（保留系统提示）
+		/// </summary>
+		public void Reset()
+		{
+			chatHistory.Clear();
 			chatHistory.AddSystemMessage(systemPrompt);
 		}
 

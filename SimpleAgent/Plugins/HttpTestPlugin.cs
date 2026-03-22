@@ -111,7 +111,7 @@ namespace SimpleAgent.Plugins
 			}
 			catch (TaskCanceledException)
 			{
-				return $"[错误] 请求超时 ({AppSettingsService.Settings.HttpTimeout}秒)。可能原因：服务未启动、端口被防火墙拦截，或者该接口发生死锁未返回任何数据。";
+				return $"[错误] 请求超时 ({AppSettingsService.Settings.HttpTimeout}ms)。可能原因：服务未启动、端口被防火墙拦截，或者该接口发生死锁未返回任何数据。";
 			}
 			catch (HttpRequestException ex)
 			{

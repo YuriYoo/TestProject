@@ -23,7 +23,7 @@ namespace SimpleAgent.Models
 		/// 用于本地模型（如Ollama: http://localhost:11434/v1）
 		/// 或第三方兼容服务（如通义千问、DeepSeek等）
 		/// </summary>
-		public string ApiBaseUrl { get; set; } = "http://192.168.9.110/v1";
+		public string ApiBaseUrl { get; set; } = "http://192.168.9.110/";
 
 		/// <summary>主模型标识符</summary>
 		public string ModelId { get; set; } = "glm-4.7-flash";

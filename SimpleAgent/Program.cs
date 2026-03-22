@@ -18,6 +18,16 @@ namespace SimpleAgent
 		[STAThread]
 		static void Main()
 		{
+			// 处理 UI 线程的未处理异常
+			Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+			Application.ThreadException += new ThreadExceptionEventHandler(Application_ThreadException);
+
+			// 处理 非 UI 线程（后台线程）的未处理异常
+			AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(CurrentDomain_UnhandledException);
+
+			// 处理程序正常退出或被 AppDomain 卸载时的事件
+			AppDomain.CurrentDomain.ProcessExit += new EventHandler(CurrentDomain_ProcessExit);
+
 			// To customize application configuration such as set high DPI settings or default font,
 			// see https://aka.ms/applicationconfiguration.
 			ApplicationConfiguration.Initialize();
@@ -53,6 +63,58 @@ namespace SimpleAgent
 				host.StopAsync().GetAwaiter().GetResult();
 				host.Dispose();
 			}*/
+		}
+
+		/// <summary>
+		/// UI 线程异常处理
+		/// </summary>
+		/// <param name="sender"></param>
+		/// <param name="e"></param>
+		static void Application_ThreadException(object sender, ThreadExceptionEventArgs e)
+		{
+			PerformCleanup();
+			// 可以选择记录日志并退出，或者让用户决定是否继续运行
+			//MessageBox.Show("发生UI线程错误，程序将退出。错误信息：" + e.Exception.Message);
+			Application.Exit();
+		}
+
+		/// <summary>
+		/// 非 UI 线程异常处理（一旦触发，程序必然会崩溃退出，无法阻止，但可以趁机清理）
+		/// </summary>
+		/// <param name="sender"></param>
+		/// <param name="e"></param>
+		static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+		{
+			PerformCleanup();
+			Exception ex = e.ExceptionObject as Exception;
+			//MessageBox.Show("发生严重系统错误，程序必须退出。错误信息：" + (ex?.Message ?? "未知错误"));
+			// 注意：Environment.Exit 会立即终止进程，确保不会弹出系统默认的崩溃窗口
+			Environment.Exit(1);
+		}
+
+		/// <summary>
+		/// 程序退出事件（正常退出或因异常引发的退出）
+		/// </summary>
+		/// <param name="sender"></param>
+		/// <param name="e"></param>
+		static void CurrentDomain_ProcessExit(object sender, EventArgs e)
+		{
+			PerformCleanup();
+		}
+
+		/// <summary>
+		/// 统一的清理方法
+		/// </summary>
+		static void PerformCleanup()
+		{
+			try
+			{
+				Services.BackgroundService.StopAll();
+			}
+			catch (Exception)
+			{
+
+			}
 		}
 	}
 }

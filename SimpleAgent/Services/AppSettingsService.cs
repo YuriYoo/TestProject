@@ -47,6 +47,7 @@ namespace SimpleAgent.Services
 				{
 					string json = File.ReadAllText(SettingsFilePath);
 					_currentSettings = JsonConvert.DeserializeObject<AppSettings>(json) ?? new AppSettings();
+					FormatCorrection();
 					return _currentSettings;
 				}
 			}
@@ -60,6 +61,18 @@ namespace SimpleAgent.Services
 			_currentSettings = new AppSettings();
 			return _currentSettings;
 		}
+
+		/// <summary>
+		/// 修正配置格式
+		/// </summary>
+		private static void FormatCorrection()
+		{
+			if (!_currentSettings.ApiBaseUrl.EndsWith('/'))
+			{
+				_currentSettings.ApiBaseUrl += '/';
+			}
+		}
+
 
 		/// <summary>
 		/// 保存设置到文件

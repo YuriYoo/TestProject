@@ -39,7 +39,7 @@ namespace SimpleAgent.Services
 			//_loggerFactory = loggerFactory;
 
 			var handler = new HttpLoggingHandler(new HttpClientHandler());
-			_httpClient = new(handler) { BaseAddress = new Uri(AppSettingsService.Settings.ApiBaseUrl) };
+			_httpClient = new(handler) { BaseAddress = new Uri($"{AppSettingsService.Settings.ApiBaseUrl}v1") };
 			UpdateSettings();
 		}
 

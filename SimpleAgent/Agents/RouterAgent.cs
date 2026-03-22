@@ -47,7 +47,7 @@ namespace SimpleAgent.Agents
 			chatCompletionService = kernel.GetRequiredService<IChatCompletionService>();
 			settings = new OpenAIPromptExecutionSettings
 			{
-				FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(kernelFunctions),
+				FunctionChoiceBehavior = FunctionChoiceBehavior.Required(kernelFunctions),
 				Temperature = 0.2,
 				Seed = RouterSeed < 0 ? seed : RouterSeed,
 			};

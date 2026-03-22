@@ -8,6 +8,7 @@ using SimpleAgent.UserControls;
 using SimpleAgent.Utility;
 using System.Diagnostics;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace SimpleAgent
 {
@@ -31,15 +32,19 @@ namespace SimpleAgent
 		private ChatUIService chatUIService;
 		private KernelService kernelService;
 		private MultiAgentOrchestrator multiAgentOrchestrator;
+		private GPUStackClient gpuClient;
 
 		public MainForm(/*ILoggerFactory loggerFactory*/)
 		{
 			InitializeComponent();
 			InitializeAgentTab();
 
+			BackgroundService.serverListBox = BackgroundServerListBox;
+
 			AppSettingsService.Load();
 			AppSettingsService.Save();
 
+			gpuClient = new();
 			chatUIService = new(this);
 			kernelService = new(/*, loggerFactory*/);
 			multiAgentOrchestrator = new(kernelService, chatUIService, this);
@@ -83,6 +88,8 @@ namespace SimpleAgent
 				isStart = true;
 				await multiAgentOrchestrator.RunWorkflowAsync(text);
 				RecoveryState();
+				isStart = false;
+				Trace.WriteLine("/////////// 已恢复初始状态 ///////////");
 			}
 		}
 
@@ -308,5 +315,65 @@ namespace SimpleAgent
 				ReviewerChatPanel.Visible = true;
 			};
 		}
+
+		private async void MainForm_Load(object sender, EventArgs e)
+		{
+			if (await gpuClient.CheckGPUStackIsStartAsync())
+			{
+				GPUStackStatusLabel.ForeColor = Color.SeaGreen;
+				GPUStackStatusLabel.Text = "[ 服务在线 ]";
+			}
+			else
+			{
+				GPUStackStatusLabel.ForeColor = Color.Firebrick;
+				GPUStackStatusLabel.Text = "[ 服务离线 ]";
+			}
+
+			if (await gpuClient.CheckModelIsOnlineAsync())
+			{
+				ModelStatusLabel.ForeColor = Color.SeaGreen;
+				ModelStatusLabel.Text = "[ 模型在线 ]";
+			}
+			else
+			{
+				ModelStatusLabel.ForeColor = Color.Firebrick;
+				ModelStatusLabel.Text = "[ 模型离线 ]";
+			}
+
+			var status = await gpuClient.GetGlobalGpuStatusAsync();
+			if (status != null)
+			{
+				MemoryLabel.Text = $"显存占用率：{status.GlobalMemoryUtilizationPercent:F2}%  {status.UsedMemoryGB:F0} / {status.TotalMemoryGB:F0}GB";
+				CoreLabel.Text = $"算力负载：{status.AverageCoreUtilizationPercent:F2}%";
+			}
+		}
+
+		private void RefreshLabel_Click(object sender, EventArgs e)
+		{
+			Trace.WriteLine("刷新状态");
+			MainForm_Load(sender, e);
+		}
+
+		#region 后台服务相关
+
+		private void BackgroundServerMenuItem_Stop_MouseDown(object sender, MouseEventArgs e)
+		{
+			Trace.WriteLine($"{BackgroundServerListBox.SelectedItem}");
+			if (BackgroundServerListBox.SelectedItem != null)
+			{
+				string serviceId = BackgroundServerListBox.SelectedItem.ToString()!;
+				BackgroundService.StopService(serviceId);
+			}
+		}
+
+		private void BackgroundServerMenuStrip_Opening(object sender, System.ComponentModel.CancelEventArgs e)
+		{
+			if (BackgroundServerListBox.SelectedItem == null)
+			{
+				e.Cancel = true; // 取消显示上下文菜单
+			}
+		}
+
+		#endregion
 	}
 }

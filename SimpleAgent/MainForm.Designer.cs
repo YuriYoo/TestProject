@@ -28,7 +28,7 @@
 		/// </summary>
 		private void InitializeComponent()
 		{
-			ChatHistory = new RichTextBox();
+			components = new System.ComponentModel.Container();
 			UserInput = new TextBox();
 			SendButton = new SimpleAgent.UserControls.FlatButton();
 			TopMenu = new MenuStrip();
@@ -46,10 +46,18 @@
 			TopMenu_Maximize = new SimpleAgent.UserControls.ToolStripButton();
 			TopMenu_Minimize = new SimpleAgent.UserControls.ToolStripButton();
 			StatusBar = new StatusStrip();
-			toolStripStatusLabel1 = new ToolStripStatusLabel();
+			GPUStackStatusLabel = new ToolStripStatusLabel();
+			ModelStatusLabel = new ToolStripStatusLabel();
+			MemoryLabel = new ToolStripStatusLabel();
+			CoreLabel = new ToolStripStatusLabel();
+			RefreshLabel = new ToolStripStatusLabel();
 			PlannerChatPanel = new FlowLayoutPanel();
 			ContentContainer = new TableLayoutPanel();
-			MiddlePanel = new Panel();
+			LeftPanel = new TableLayoutPanel();
+			label6 = new Label();
+			label5 = new Label();
+			label3 = new Label();
+			label4 = new Label();
 			MiddlePanel2 = new TableLayoutPanel();
 			ChatPanelContainer = new Panel();
 			CoderChatPanel = new FlowLayoutPanel();
@@ -58,36 +66,56 @@
 			PlannerAgentTab = new SimpleAgent.UserControls.AgentTab();
 			CoderAgentTab = new SimpleAgent.UserControls.AgentTab();
 			ReviewerAgentTab = new SimpleAgent.UserControls.AgentTab();
+			RightPanel = new TableLayoutPanel();
+			label2 = new Label();
+			BackgroundServerListBox = new ListBox();
+			BackgroundServerMenuStrip = new ContextMenuStrip(components);
+			BackgroundServerMenuItem_Stop = new ToolStripMenuItem();
+			label1 = new Label();
+			tableLayoutPanel1 = new TableLayoutPanel();
+			label7 = new Label();
+			label8 = new Label();
+			label9 = new Label();
+			label10 = new Label();
+			label11 = new Label();
+			label12 = new Label();
+			label13 = new Label();
+			label14 = new Label();
+			label15 = new Label();
+			label16 = new Label();
+			label17 = new Label();
+			label18 = new Label();
+			PAllTokens = new Label();
+			PInTokens = new Label();
+			POutTokens = new Label();
+			DAllTokens = new Label();
+			DInTokens = new Label();
+			DOutTokens = new Label();
+			RAllTokens = new Label();
+			RInTokens = new Label();
+			ROutTokens = new Label();
 			TopMenu.SuspendLayout();
 			StatusBar.SuspendLayout();
 			ContentContainer.SuspendLayout();
-			MiddlePanel.SuspendLayout();
+			LeftPanel.SuspendLayout();
 			MiddlePanel2.SuspendLayout();
 			ChatPanelContainer.SuspendLayout();
 			AgentTabPanel.SuspendLayout();
+			RightPanel.SuspendLayout();
+			BackgroundServerMenuStrip.SuspendLayout();
+			tableLayoutPanel1.SuspendLayout();
 			SuspendLayout();
-			// 
-			// ChatHistory
-			// 
-			ChatHistory.BackColor = Color.White;
-			ChatHistory.BorderStyle = BorderStyle.None;
-			ChatHistory.Location = new Point(935, 3);
-			ChatHistory.Name = "ChatHistory";
-			ChatHistory.ReadOnly = true;
-			ChatHistory.Size = new Size(334, 126);
-			ChatHistory.TabIndex = 0;
-			ChatHistory.Text = "";
 			// 
 			// UserInput
 			// 
 			UserInput.BackColor = Color.WhiteSmoke;
 			UserInput.Dock = DockStyle.Fill;
-			UserInput.Location = new Point(5, 578);
+			UserInput.Location = new Point(5, 572);
 			UserInput.Margin = new Padding(5, 5, 0, 5);
 			UserInput.MaxLength = 0;
 			UserInput.Multiline = true;
 			UserInput.Name = "UserInput";
-			UserInput.Size = new Size(617, 70);
+			UserInput.Size = new Size(611, 70);
 			UserInput.TabIndex = 1;
 			UserInput.Text = "帮我用web开发一个笔记软件";
 			// 
@@ -100,7 +128,7 @@
 			SendButton.FlatAppearance.MouseOverBackColor = Color.DeepSkyBlue;
 			SendButton.FlatStyle = FlatStyle.Flat;
 			SendButton.ForeColor = Color.White;
-			SendButton.Location = new Point(627, 578);
+			SendButton.Location = new Point(621, 572);
 			SendButton.Margin = new Padding(5);
 			SendButton.Name = "SendButton";
 			SendButton.Size = new Size(50, 70);
@@ -239,8 +267,9 @@
 			// StatusBar
 			// 
 			StatusBar.AllowMerge = false;
-			StatusBar.Items.AddRange(new ToolStripItem[] { toolStripStatusLabel1 });
-			StatusBar.LayoutStyle = ToolStripLayoutStyle.Flow;
+			StatusBar.GripMargin = new Padding(0);
+			StatusBar.Items.AddRange(new ToolStripItem[] { GPUStackStatusLabel, ModelStatusLabel, MemoryLabel, CoreLabel, RefreshLabel });
+			StatusBar.LayoutStyle = ToolStripLayoutStyle.HorizontalStackWithOverflow;
 			StatusBar.Location = new Point(4, 694);
 			StatusBar.Name = "StatusBar";
 			StatusBar.Size = new Size(1272, 22);
@@ -248,11 +277,42 @@
 			StatusBar.TabIndex = 4;
 			StatusBar.Text = "状态栏";
 			// 
-			// toolStripStatusLabel1
+			// GPUStackStatusLabel
 			// 
-			toolStripStatusLabel1.Name = "toolStripStatusLabel1";
-			toolStripStatusLabel1.Size = new Size(131, 17);
-			toolStripStatusLabel1.Text = "toolStripStatusLabel1";
+			GPUStackStatusLabel.Margin = new Padding(0, 4, 0, 0);
+			GPUStackStatusLabel.Name = "GPUStackStatusLabel";
+			GPUStackStatusLabel.Size = new Size(84, 18);
+			GPUStackStatusLabel.Text = "[ 服务连接中 ]";
+			// 
+			// ModelStatusLabel
+			// 
+			ModelStatusLabel.Margin = new Padding(10, 4, 0, 0);
+			ModelStatusLabel.Name = "ModelStatusLabel";
+			ModelStatusLabel.Size = new Size(84, 18);
+			ModelStatusLabel.Text = "[ 模型连接中 ]";
+			// 
+			// MemoryLabel
+			// 
+			MemoryLabel.Margin = new Padding(10, 4, 0, 0);
+			MemoryLabel.Name = "MemoryLabel";
+			MemoryLabel.Size = new Size(154, 18);
+			MemoryLabel.Text = "显存占用率：0%  0 / 0 GB";
+			// 
+			// CoreLabel
+			// 
+			CoreLabel.Margin = new Padding(10, 4, 0, 0);
+			CoreLabel.Name = "CoreLabel";
+			CoreLabel.Size = new Size(86, 18);
+			CoreLabel.Text = "算力负载：0%";
+			// 
+			// RefreshLabel
+			// 
+			RefreshLabel.ForeColor = SystemColors.HotTrack;
+			RefreshLabel.Margin = new Padding(20, 4, 0, 0);
+			RefreshLabel.Name = "RefreshLabel";
+			RefreshLabel.Size = new Size(56, 18);
+			RefreshLabel.Text = "刷新状态";
+			RefreshLabel.Click += RefreshLabel_Click;
 			// 
 			// PlannerChatPanel
 			// 
@@ -263,7 +323,7 @@
 			PlannerChatPanel.Location = new Point(0, 0);
 			PlannerChatPanel.Margin = new Padding(5, 5, 5, 0);
 			PlannerChatPanel.Name = "PlannerChatPanel";
-			PlannerChatPanel.Size = new Size(682, 523);
+			PlannerChatPanel.Size = new Size(676, 517);
 			PlannerChatPanel.TabIndex = 3;
 			PlannerChatPanel.WrapContents = false;
 			PlannerChatPanel.SizeChanged += ChatPanel_SizeChanged;
@@ -274,8 +334,9 @@
 			ContentContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 250F));
 			ContentContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
 			ContentContainer.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 340F));
-			ContentContainer.Controls.Add(MiddlePanel, 1, 0);
-			ContentContainer.Controls.Add(ChatHistory, 2, 0);
+			ContentContainer.Controls.Add(LeftPanel, 0, 0);
+			ContentContainer.Controls.Add(MiddlePanel2, 1, 0);
+			ContentContainer.Controls.Add(RightPanel, 2, 0);
 			ContentContainer.Dock = DockStyle.Fill;
 			ContentContainer.Location = new Point(4, 41);
 			ContentContainer.Margin = new Padding(0);
@@ -286,15 +347,84 @@
 			ContentContainer.Size = new Size(1272, 653);
 			ContentContainer.TabIndex = 5;
 			// 
-			// MiddlePanel
+			// LeftPanel
 			// 
-			MiddlePanel.Controls.Add(MiddlePanel2);
-			MiddlePanel.Dock = DockStyle.Fill;
-			MiddlePanel.Location = new Point(250, 0);
-			MiddlePanel.Margin = new Padding(0);
-			MiddlePanel.Name = "MiddlePanel";
-			MiddlePanel.Size = new Size(682, 653);
-			MiddlePanel.TabIndex = 4;
+			LeftPanel.BackColor = Color.White;
+			LeftPanel.ColumnCount = 1;
+			LeftPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+			LeftPanel.Controls.Add(label6, 0, 3);
+			LeftPanel.Controls.Add(label5, 0, 2);
+			LeftPanel.Controls.Add(label3, 0, 0);
+			LeftPanel.Controls.Add(label4, 0, 1);
+			LeftPanel.Dock = DockStyle.Fill;
+			LeftPanel.Location = new Point(0, 0);
+			LeftPanel.Margin = new Padding(0);
+			LeftPanel.Name = "LeftPanel";
+			LeftPanel.RowCount = 4;
+			LeftPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
+			LeftPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 30F));
+			LeftPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
+			LeftPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 70F));
+			LeftPanel.Size = new Size(250, 653);
+			LeftPanel.TabIndex = 6;
+			// 
+			// label6
+			// 
+			label6.AutoSize = true;
+			label6.Dock = DockStyle.Fill;
+			label6.Font = new Font("Microsoft YaHei UI", 18F, FontStyle.Regular, GraphicsUnit.Point, 134);
+			label6.ForeColor = Color.Silver;
+			label6.Location = new Point(0, 237);
+			label6.Margin = new Padding(0);
+			label6.Name = "label6";
+			label6.Size = new Size(250, 416);
+			label6.TabIndex = 7;
+			label6.Text = "待开发";
+			label6.TextAlign = ContentAlignment.MiddleCenter;
+			// 
+			// label5
+			// 
+			label5.AutoSize = true;
+			label5.BackColor = Color.WhiteSmoke;
+			label5.Dock = DockStyle.Fill;
+			label5.Font = new Font("Microsoft YaHei UI", 11.25F, FontStyle.Bold, GraphicsUnit.Point, 134);
+			label5.Location = new Point(0, 207);
+			label5.Margin = new Padding(0);
+			label5.Name = "label5";
+			label5.Padding = new Padding(10, 0, 10, 0);
+			label5.Size = new Size(250, 30);
+			label5.TabIndex = 5;
+			label5.Text = "对话列表";
+			label5.TextAlign = ContentAlignment.MiddleLeft;
+			// 
+			// label3
+			// 
+			label3.AutoSize = true;
+			label3.BackColor = Color.WhiteSmoke;
+			label3.Dock = DockStyle.Fill;
+			label3.Font = new Font("Microsoft YaHei UI", 11.25F, FontStyle.Bold, GraphicsUnit.Point, 134);
+			label3.Location = new Point(0, 0);
+			label3.Margin = new Padding(0);
+			label3.Name = "label3";
+			label3.Padding = new Padding(10, 0, 10, 0);
+			label3.Size = new Size(250, 30);
+			label3.TabIndex = 3;
+			label3.Text = "项目信息";
+			label3.TextAlign = ContentAlignment.MiddleLeft;
+			// 
+			// label4
+			// 
+			label4.AutoSize = true;
+			label4.Dock = DockStyle.Fill;
+			label4.Font = new Font("Microsoft YaHei UI", 18F, FontStyle.Regular, GraphicsUnit.Point, 134);
+			label4.ForeColor = Color.Silver;
+			label4.Location = new Point(0, 30);
+			label4.Margin = new Padding(0);
+			label4.Name = "label4";
+			label4.Size = new Size(250, 177);
+			label4.TabIndex = 6;
+			label4.Text = "待开发";
+			label4.TextAlign = ContentAlignment.MiddleCenter;
 			// 
 			// MiddlePanel2
 			// 
@@ -307,13 +437,14 @@
 			MiddlePanel2.Controls.Add(ChatPanelContainer, 0, 1);
 			MiddlePanel2.Controls.Add(AgentTabPanel, 0, 0);
 			MiddlePanel2.Dock = DockStyle.Fill;
-			MiddlePanel2.Location = new Point(0, 0);
+			MiddlePanel2.Location = new Point(253, 3);
 			MiddlePanel2.Name = "MiddlePanel2";
 			MiddlePanel2.RowCount = 3;
 			MiddlePanel2.RowStyles.Add(new RowStyle(SizeType.Absolute, 50F));
 			MiddlePanel2.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 			MiddlePanel2.RowStyles.Add(new RowStyle(SizeType.Absolute, 80F));
-			MiddlePanel2.Size = new Size(682, 653);
+			MiddlePanel2.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
+			MiddlePanel2.Size = new Size(676, 647);
 			MiddlePanel2.TabIndex = 4;
 			// 
 			// ChatPanelContainer
@@ -326,7 +457,7 @@
 			ChatPanelContainer.Location = new Point(0, 50);
 			ChatPanelContainer.Margin = new Padding(0);
 			ChatPanelContainer.Name = "ChatPanelContainer";
-			ChatPanelContainer.Size = new Size(682, 523);
+			ChatPanelContainer.Size = new Size(676, 517);
 			ChatPanelContainer.TabIndex = 3;
 			// 
 			// CoderChatPanel
@@ -338,7 +469,7 @@
 			CoderChatPanel.Location = new Point(0, 0);
 			CoderChatPanel.Margin = new Padding(5, 5, 5, 0);
 			CoderChatPanel.Name = "CoderChatPanel";
-			CoderChatPanel.Size = new Size(682, 523);
+			CoderChatPanel.Size = new Size(676, 517);
 			CoderChatPanel.TabIndex = 4;
 			CoderChatPanel.Visible = false;
 			CoderChatPanel.WrapContents = false;
@@ -352,7 +483,7 @@
 			ReviewerChatPanel.Location = new Point(0, 0);
 			ReviewerChatPanel.Margin = new Padding(5, 5, 5, 0);
 			ReviewerChatPanel.Name = "ReviewerChatPanel";
-			ReviewerChatPanel.Size = new Size(682, 523);
+			ReviewerChatPanel.Size = new Size(676, 517);
 			ReviewerChatPanel.TabIndex = 5;
 			ReviewerChatPanel.Visible = false;
 			ReviewerChatPanel.WrapContents = false;
@@ -373,7 +504,7 @@
 			AgentTabPanel.Name = "AgentTabPanel";
 			AgentTabPanel.RowCount = 1;
 			AgentTabPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-			AgentTabPanel.Size = new Size(682, 50);
+			AgentTabPanel.Size = new Size(676, 50);
 			AgentTabPanel.TabIndex = 4;
 			// 
 			// PlannerAgentTab
@@ -385,7 +516,7 @@
 			PlannerAgentTab.Location = new Point(4, 4);
 			PlannerAgentTab.Margin = new Padding(4, 4, 2, 2);
 			PlannerAgentTab.Name = "PlannerAgentTab";
-			PlannerAgentTab.Size = new Size(221, 44);
+			PlannerAgentTab.Size = new Size(219, 44);
 			PlannerAgentTab.TabIndex = 0;
 			// 
 			// CoderAgentTab
@@ -394,10 +525,10 @@
 			CoderAgentTab.BackColor = Color.WhiteSmoke;
 			CoderAgentTab.Dock = DockStyle.Fill;
 			CoderAgentTab.IsSelected = false;
-			CoderAgentTab.Location = new Point(229, 4);
+			CoderAgentTab.Location = new Point(227, 4);
 			CoderAgentTab.Margin = new Padding(2, 4, 2, 2);
 			CoderAgentTab.Name = "CoderAgentTab";
-			CoderAgentTab.Size = new Size(223, 44);
+			CoderAgentTab.Size = new Size(221, 44);
 			CoderAgentTab.TabIndex = 1;
 			// 
 			// ReviewerAgentTab
@@ -406,11 +537,399 @@
 			ReviewerAgentTab.BackColor = Color.WhiteSmoke;
 			ReviewerAgentTab.Dock = DockStyle.Fill;
 			ReviewerAgentTab.IsSelected = false;
-			ReviewerAgentTab.Location = new Point(456, 4);
+			ReviewerAgentTab.Location = new Point(452, 4);
 			ReviewerAgentTab.Margin = new Padding(2, 4, 4, 2);
 			ReviewerAgentTab.Name = "ReviewerAgentTab";
-			ReviewerAgentTab.Size = new Size(222, 44);
+			ReviewerAgentTab.Size = new Size(220, 44);
 			ReviewerAgentTab.TabIndex = 2;
+			// 
+			// RightPanel
+			// 
+			RightPanel.BackColor = Color.White;
+			RightPanel.ColumnCount = 1;
+			RightPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+			RightPanel.Controls.Add(label2, 0, 2);
+			RightPanel.Controls.Add(BackgroundServerListBox, 0, 3);
+			RightPanel.Controls.Add(label1, 0, 0);
+			RightPanel.Controls.Add(tableLayoutPanel1, 0, 1);
+			RightPanel.Dock = DockStyle.Fill;
+			RightPanel.Location = new Point(932, 0);
+			RightPanel.Margin = new Padding(0);
+			RightPanel.Name = "RightPanel";
+			RightPanel.RowCount = 4;
+			RightPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
+			RightPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+			RightPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
+			RightPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 200F));
+			RightPanel.Size = new Size(340, 653);
+			RightPanel.TabIndex = 5;
+			// 
+			// label2
+			// 
+			label2.AutoSize = true;
+			label2.BackColor = Color.WhiteSmoke;
+			label2.Dock = DockStyle.Fill;
+			label2.Font = new Font("Microsoft YaHei UI", 11.25F, FontStyle.Bold, GraphicsUnit.Point, 134);
+			label2.Location = new Point(0, 423);
+			label2.Margin = new Padding(0);
+			label2.Name = "label2";
+			label2.Padding = new Padding(10, 0, 10, 0);
+			label2.Size = new Size(340, 30);
+			label2.TabIndex = 3;
+			label2.Text = "运行中的后台服务";
+			label2.TextAlign = ContentAlignment.MiddleLeft;
+			// 
+			// BackgroundServerListBox
+			// 
+			BackgroundServerListBox.BorderStyle = BorderStyle.None;
+			BackgroundServerListBox.ContextMenuStrip = BackgroundServerMenuStrip;
+			BackgroundServerListBox.Dock = DockStyle.Fill;
+			BackgroundServerListBox.Font = new Font("Microsoft YaHei UI", 10.5F, FontStyle.Regular, GraphicsUnit.Point, 134);
+			BackgroundServerListBox.ItemHeight = 20;
+			BackgroundServerListBox.Location = new Point(0, 453);
+			BackgroundServerListBox.Margin = new Padding(0);
+			BackgroundServerListBox.Name = "BackgroundServerListBox";
+			BackgroundServerListBox.Size = new Size(340, 200);
+			BackgroundServerListBox.TabIndex = 1;
+			// 
+			// BackgroundServerMenuStrip
+			// 
+			BackgroundServerMenuStrip.Items.AddRange(new ToolStripItem[] { BackgroundServerMenuItem_Stop });
+			BackgroundServerMenuStrip.Name = "BackgroundServerMenuStrip";
+			BackgroundServerMenuStrip.Size = new Size(125, 26);
+			BackgroundServerMenuStrip.Opening += BackgroundServerMenuStrip_Opening;
+			// 
+			// BackgroundServerMenuItem_Stop
+			// 
+			BackgroundServerMenuItem_Stop.Name = "BackgroundServerMenuItem_Stop";
+			BackgroundServerMenuItem_Stop.Size = new Size(124, 22);
+			BackgroundServerMenuItem_Stop.Text = "停止服务";
+			BackgroundServerMenuItem_Stop.MouseDown += BackgroundServerMenuItem_Stop_MouseDown;
+			// 
+			// label1
+			// 
+			label1.AutoSize = true;
+			label1.BackColor = Color.WhiteSmoke;
+			label1.Dock = DockStyle.Fill;
+			label1.Font = new Font("Microsoft YaHei UI", 11.25F, FontStyle.Bold, GraphicsUnit.Point, 134);
+			label1.Location = new Point(0, 0);
+			label1.Margin = new Padding(0);
+			label1.Name = "label1";
+			label1.Padding = new Padding(10, 0, 10, 0);
+			label1.Size = new Size(340, 30);
+			label1.TabIndex = 2;
+			label1.Text = "智能体会话信息";
+			label1.TextAlign = ContentAlignment.MiddleLeft;
+			// 
+			// tableLayoutPanel1
+			// 
+			tableLayoutPanel1.ColumnCount = 3;
+			tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.33333F));
+			tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.3333359F));
+			tableLayoutPanel1.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 33.3333359F));
+			tableLayoutPanel1.Controls.Add(label7, 0, 0);
+			tableLayoutPanel1.Controls.Add(label8, 0, 3);
+			tableLayoutPanel1.Controls.Add(label9, 0, 6);
+			tableLayoutPanel1.Controls.Add(label10, 0, 1);
+			tableLayoutPanel1.Controls.Add(label11, 1, 1);
+			tableLayoutPanel1.Controls.Add(label12, 2, 1);
+			tableLayoutPanel1.Controls.Add(label13, 0, 4);
+			tableLayoutPanel1.Controls.Add(label14, 1, 4);
+			tableLayoutPanel1.Controls.Add(label15, 2, 4);
+			tableLayoutPanel1.Controls.Add(label16, 0, 7);
+			tableLayoutPanel1.Controls.Add(label17, 1, 7);
+			tableLayoutPanel1.Controls.Add(label18, 2, 7);
+			tableLayoutPanel1.Controls.Add(PAllTokens, 0, 2);
+			tableLayoutPanel1.Controls.Add(PInTokens, 1, 2);
+			tableLayoutPanel1.Controls.Add(POutTokens, 2, 2);
+			tableLayoutPanel1.Controls.Add(DAllTokens, 0, 5);
+			tableLayoutPanel1.Controls.Add(DInTokens, 1, 5);
+			tableLayoutPanel1.Controls.Add(DOutTokens, 2, 5);
+			tableLayoutPanel1.Controls.Add(RAllTokens, 0, 8);
+			tableLayoutPanel1.Controls.Add(RInTokens, 1, 8);
+			tableLayoutPanel1.Controls.Add(ROutTokens, 2, 8);
+			tableLayoutPanel1.Dock = DockStyle.Fill;
+			tableLayoutPanel1.Location = new Point(3, 33);
+			tableLayoutPanel1.Name = "tableLayoutPanel1";
+			tableLayoutPanel1.RowCount = 9;
+			tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
+			tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
+			tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 50F));
+			tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
+			tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
+			tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 50F));
+			tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
+			tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
+			tableLayoutPanel1.RowStyles.Add(new RowStyle(SizeType.Absolute, 50F));
+			tableLayoutPanel1.Size = new Size(334, 387);
+			tableLayoutPanel1.TabIndex = 4;
+			// 
+			// label7
+			// 
+			label7.AutoSize = true;
+			label7.BackColor = Color.WhiteSmoke;
+			tableLayoutPanel1.SetColumnSpan(label7, 3);
+			label7.Dock = DockStyle.Fill;
+			label7.Font = new Font("Microsoft YaHei UI", 9F, FontStyle.Bold);
+			label7.Location = new Point(3, 0);
+			label7.Name = "label7";
+			label7.Size = new Size(328, 30);
+			label7.TabIndex = 0;
+			label7.Text = "规划智能体信息";
+			label7.TextAlign = ContentAlignment.MiddleCenter;
+			// 
+			// label8
+			// 
+			label8.AutoSize = true;
+			label8.BackColor = Color.WhiteSmoke;
+			tableLayoutPanel1.SetColumnSpan(label8, 3);
+			label8.Dock = DockStyle.Fill;
+			label8.Font = new Font("Microsoft YaHei UI", 9F, FontStyle.Bold);
+			label8.Location = new Point(3, 110);
+			label8.Name = "label8";
+			label8.Size = new Size(328, 30);
+			label8.TabIndex = 1;
+			label8.Text = "编程智能体信息";
+			label8.TextAlign = ContentAlignment.MiddleCenter;
+			// 
+			// label9
+			// 
+			label9.AutoSize = true;
+			label9.BackColor = Color.WhiteSmoke;
+			tableLayoutPanel1.SetColumnSpan(label9, 3);
+			label9.Dock = DockStyle.Fill;
+			label9.Font = new Font("Microsoft YaHei UI", 9F, FontStyle.Bold);
+			label9.Location = new Point(3, 220);
+			label9.Name = "label9";
+			label9.Size = new Size(328, 30);
+			label9.TabIndex = 2;
+			label9.Text = "审查智能体信息";
+			label9.TextAlign = ContentAlignment.MiddleCenter;
+			// 
+			// label10
+			// 
+			label10.AutoSize = true;
+			label10.Dock = DockStyle.Fill;
+			label10.Font = new Font("Microsoft YaHei UI", 10.5F);
+			label10.Location = new Point(3, 30);
+			label10.Name = "label10";
+			label10.Size = new Size(105, 30);
+			label10.TabIndex = 3;
+			label10.Text = "总Tokens";
+			label10.TextAlign = ContentAlignment.BottomCenter;
+			// 
+			// label11
+			// 
+			label11.AutoSize = true;
+			label11.Dock = DockStyle.Fill;
+			label11.Font = new Font("Microsoft YaHei UI", 10.5F);
+			label11.Location = new Point(114, 30);
+			label11.Name = "label11";
+			label11.Size = new Size(105, 30);
+			label11.TabIndex = 4;
+			label11.Text = "输入Tokens";
+			label11.TextAlign = ContentAlignment.BottomCenter;
+			// 
+			// label12
+			// 
+			label12.AutoSize = true;
+			label12.Dock = DockStyle.Fill;
+			label12.Font = new Font("Microsoft YaHei UI", 10.5F);
+			label12.Location = new Point(225, 30);
+			label12.Name = "label12";
+			label12.Size = new Size(106, 30);
+			label12.TabIndex = 5;
+			label12.Text = "输出Tokens";
+			label12.TextAlign = ContentAlignment.BottomCenter;
+			// 
+			// label13
+			// 
+			label13.AutoSize = true;
+			label13.Dock = DockStyle.Fill;
+			label13.Font = new Font("Microsoft YaHei UI", 10.5F);
+			label13.Location = new Point(3, 140);
+			label13.Name = "label13";
+			label13.Size = new Size(105, 30);
+			label13.TabIndex = 6;
+			label13.Text = "总Tokens";
+			label13.TextAlign = ContentAlignment.BottomCenter;
+			// 
+			// label14
+			// 
+			label14.AutoSize = true;
+			label14.Dock = DockStyle.Fill;
+			label14.Font = new Font("Microsoft YaHei UI", 10.5F);
+			label14.Location = new Point(114, 140);
+			label14.Name = "label14";
+			label14.Size = new Size(105, 30);
+			label14.TabIndex = 7;
+			label14.Text = "输入Tokens";
+			label14.TextAlign = ContentAlignment.BottomCenter;
+			// 
+			// label15
+			// 
+			label15.AutoSize = true;
+			label15.Dock = DockStyle.Fill;
+			label15.Font = new Font("Microsoft YaHei UI", 10.5F);
+			label15.Location = new Point(225, 140);
+			label15.Name = "label15";
+			label15.Size = new Size(106, 30);
+			label15.TabIndex = 8;
+			label15.Text = "输出Tokens";
+			label15.TextAlign = ContentAlignment.BottomCenter;
+			// 
+			// label16
+			// 
+			label16.AutoSize = true;
+			label16.Dock = DockStyle.Fill;
+			label16.Font = new Font("Microsoft YaHei UI", 10.5F);
+			label16.Location = new Point(3, 250);
+			label16.Name = "label16";
+			label16.Size = new Size(105, 30);
+			label16.TabIndex = 9;
+			label16.Text = "总Tokens";
+			label16.TextAlign = ContentAlignment.BottomCenter;
+			// 
+			// label17
+			// 
+			label17.AutoSize = true;
+			label17.Dock = DockStyle.Fill;
+			label17.Font = new Font("Microsoft YaHei UI", 10.5F);
+			label17.Location = new Point(114, 250);
+			label17.Name = "label17";
+			label17.Size = new Size(105, 30);
+			label17.TabIndex = 10;
+			label17.Text = "输入Tokens";
+			label17.TextAlign = ContentAlignment.BottomCenter;
+			// 
+			// label18
+			// 
+			label18.AutoSize = true;
+			label18.Dock = DockStyle.Fill;
+			label18.Font = new Font("Microsoft YaHei UI", 10.5F);
+			label18.Location = new Point(225, 250);
+			label18.Name = "label18";
+			label18.Size = new Size(106, 30);
+			label18.TabIndex = 11;
+			label18.Text = "输出Tokens";
+			label18.TextAlign = ContentAlignment.BottomCenter;
+			// 
+			// PAllTokens
+			// 
+			PAllTokens.AutoSize = true;
+			PAllTokens.Dock = DockStyle.Top;
+			PAllTokens.Font = new Font("Bahnschrift Condensed", 21.75F, FontStyle.Bold);
+			PAllTokens.ForeColor = SystemColors.MenuHighlight;
+			PAllTokens.Location = new Point(3, 60);
+			PAllTokens.Name = "PAllTokens";
+			PAllTokens.Size = new Size(105, 35);
+			PAllTokens.TabIndex = 12;
+			PAllTokens.Text = "0";
+			PAllTokens.TextAlign = ContentAlignment.MiddleCenter;
+			// 
+			// PInTokens
+			// 
+			PInTokens.AutoSize = true;
+			PInTokens.Dock = DockStyle.Top;
+			PInTokens.Font = new Font("Bahnschrift Condensed", 21.75F, FontStyle.Bold);
+			PInTokens.ForeColor = SystemColors.MenuHighlight;
+			PInTokens.Location = new Point(114, 60);
+			PInTokens.Name = "PInTokens";
+			PInTokens.Size = new Size(105, 35);
+			PInTokens.TabIndex = 13;
+			PInTokens.Text = "0";
+			PInTokens.TextAlign = ContentAlignment.MiddleCenter;
+			// 
+			// POutTokens
+			// 
+			POutTokens.AutoSize = true;
+			POutTokens.Dock = DockStyle.Top;
+			POutTokens.Font = new Font("Bahnschrift Condensed", 21.75F, FontStyle.Bold);
+			POutTokens.ForeColor = SystemColors.MenuHighlight;
+			POutTokens.Location = new Point(225, 60);
+			POutTokens.Name = "POutTokens";
+			POutTokens.Size = new Size(106, 35);
+			POutTokens.TabIndex = 14;
+			POutTokens.Text = "0";
+			POutTokens.TextAlign = ContentAlignment.MiddleCenter;
+			// 
+			// DAllTokens
+			// 
+			DAllTokens.AutoSize = true;
+			DAllTokens.Dock = DockStyle.Top;
+			DAllTokens.Font = new Font("Bahnschrift Condensed", 21.75F, FontStyle.Bold);
+			DAllTokens.ForeColor = SystemColors.MenuHighlight;
+			DAllTokens.Location = new Point(3, 170);
+			DAllTokens.Name = "DAllTokens";
+			DAllTokens.Size = new Size(105, 35);
+			DAllTokens.TabIndex = 15;
+			DAllTokens.Text = "0";
+			DAllTokens.TextAlign = ContentAlignment.MiddleCenter;
+			// 
+			// DInTokens
+			// 
+			DInTokens.AutoSize = true;
+			DInTokens.Dock = DockStyle.Top;
+			DInTokens.Font = new Font("Bahnschrift Condensed", 21.75F, FontStyle.Bold);
+			DInTokens.ForeColor = SystemColors.MenuHighlight;
+			DInTokens.Location = new Point(114, 170);
+			DInTokens.Name = "DInTokens";
+			DInTokens.Size = new Size(105, 35);
+			DInTokens.TabIndex = 16;
+			DInTokens.Text = "0";
+			DInTokens.TextAlign = ContentAlignment.MiddleCenter;
+			// 
+			// DOutTokens
+			// 
+			DOutTokens.AutoSize = true;
+			DOutTokens.Dock = DockStyle.Top;
+			DOutTokens.Font = new Font("Bahnschrift Condensed", 21.75F, FontStyle.Bold);
+			DOutTokens.ForeColor = SystemColors.MenuHighlight;
+			DOutTokens.Location = new Point(225, 170);
+			DOutTokens.Name = "DOutTokens";
+			DOutTokens.Size = new Size(106, 35);
+			DOutTokens.TabIndex = 17;
+			DOutTokens.Text = "0";
+			DOutTokens.TextAlign = ContentAlignment.MiddleCenter;
+			// 
+			// RAllTokens
+			// 
+			RAllTokens.AutoSize = true;
+			RAllTokens.Dock = DockStyle.Top;
+			RAllTokens.Font = new Font("Bahnschrift Condensed", 21.75F, FontStyle.Bold);
+			RAllTokens.ForeColor = SystemColors.MenuHighlight;
+			RAllTokens.Location = new Point(3, 280);
+			RAllTokens.Name = "RAllTokens";
+			RAllTokens.Size = new Size(105, 35);
+			RAllTokens.TabIndex = 18;
+			RAllTokens.Text = "0";
+			RAllTokens.TextAlign = ContentAlignment.MiddleCenter;
+			// 
+			// RInTokens
+			// 
+			RInTokens.AutoSize = true;
+			RInTokens.Dock = DockStyle.Top;
+			RInTokens.Font = new Font("Bahnschrift Condensed", 21.75F, FontStyle.Bold);
+			RInTokens.ForeColor = SystemColors.MenuHighlight;
+			RInTokens.Location = new Point(114, 280);
+			RInTokens.Name = "RInTokens";
+			RInTokens.Size = new Size(105, 35);
+			RInTokens.TabIndex = 19;
+			RInTokens.Text = "0";
+			RInTokens.TextAlign = ContentAlignment.MiddleCenter;
+			// 
+			// ROutTokens
+			// 
+			ROutTokens.AutoSize = true;
+			ROutTokens.Dock = DockStyle.Top;
+			ROutTokens.Font = new Font("Bahnschrift Condensed", 21.75F, FontStyle.Bold);
+			ROutTokens.ForeColor = SystemColors.MenuHighlight;
+			ROutTokens.Location = new Point(225, 280);
+			ROutTokens.Name = "ROutTokens";
+			ROutTokens.Size = new Size(106, 35);
+			ROutTokens.TabIndex = 20;
+			ROutTokens.Text = "0";
+			ROutTokens.TextAlign = ContentAlignment.MiddleCenter;
 			// 
 			// MainForm
 			// 
@@ -428,24 +947,29 @@
 			Padding = new Padding(4);
 			StartPosition = FormStartPosition.CenterScreen;
 			Text = "AI编程助手";
+			Load += MainForm_Load;
 			SizeChanged += MainForm_SizeChanged;
 			TopMenu.ResumeLayout(false);
 			TopMenu.PerformLayout();
 			StatusBar.ResumeLayout(false);
 			StatusBar.PerformLayout();
 			ContentContainer.ResumeLayout(false);
-			MiddlePanel.ResumeLayout(false);
+			LeftPanel.ResumeLayout(false);
+			LeftPanel.PerformLayout();
 			MiddlePanel2.ResumeLayout(false);
 			MiddlePanel2.PerformLayout();
 			ChatPanelContainer.ResumeLayout(false);
 			AgentTabPanel.ResumeLayout(false);
+			RightPanel.ResumeLayout(false);
+			RightPanel.PerformLayout();
+			BackgroundServerMenuStrip.ResumeLayout(false);
+			tableLayoutPanel1.ResumeLayout(false);
+			tableLayoutPanel1.PerformLayout();
 			ResumeLayout(false);
 			PerformLayout();
 		}
 
 		#endregion
-
-		private RichTextBox ChatHistory;
 		private TextBox UserInput;
 		private SimpleAgent.UserControls.FlatButton SendButton;
 		private MenuStrip TopMenu;
@@ -463,9 +987,8 @@
 		private UserControls.ToolStripButton TopMenu_Maximize;
 		private ToolStripTextBox TopMenu_AppName;
 		private StatusStrip StatusBar;
-		private ToolStripStatusLabel toolStripStatusLabel1;
+		private ToolStripStatusLabel GPUStackStatusLabel;
 		private TableLayoutPanel ContentContainer;
-		private Panel MiddlePanel;
 		private TableLayoutPanel MiddlePanel2;
 		private Panel ChatPanelContainer;
 		private TableLayoutPanel AgentTabPanel;
@@ -475,5 +998,42 @@
 		public UserControls.AgentTab PlannerAgentTab;
 		public UserControls.AgentTab CoderAgentTab;
 		public UserControls.AgentTab ReviewerAgentTab;
+		private TableLayoutPanel RightPanel;
+		private TableLayoutPanel LeftPanel;
+		private ListBox BackgroundServerListBox;
+		private Label label2;
+		private Label label1;
+		private ContextMenuStrip BackgroundServerMenuStrip;
+		private ToolStripMenuItem BackgroundServerMenuItem_Stop;
+		private Label label5;
+		private Label label3;
+		private Label label6;
+		private Label label4;
+		private ToolStripStatusLabel ModelStatusLabel;
+		private ToolStripStatusLabel MemoryLabel;
+		private ToolStripStatusLabel CoreLabel;
+		private ToolStripStatusLabel RefreshLabel;
+		private TableLayoutPanel tableLayoutPanel1;
+		private Label label7;
+		private Label label8;
+		private Label label9;
+		private Label label10;
+		private Label label11;
+		private Label label12;
+		private Label label13;
+		private Label label14;
+		private Label label15;
+		private Label label16;
+		private Label label17;
+		private Label label18;
+		public Label PAllTokens;
+		public Label PInTokens;
+		public Label POutTokens;
+		public Label DAllTokens;
+		public Label DInTokens;
+		public Label DOutTokens;
+		public Label RAllTokens;
+		public Label RInTokens;
+		public Label ROutTokens;
 	}
 }

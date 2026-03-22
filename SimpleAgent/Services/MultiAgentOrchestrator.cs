@@ -2,6 +2,7 @@
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 using Newtonsoft.Json.Linq;
+using OpenAI.Chat;
 using SimpleAgent.Agents;
 using SimpleAgent.Models;
 using SimpleAgent.Plugins;
@@ -382,19 +383,14 @@ namespace SimpleAgent.Services
 		private async Task HandleRoutingAsync()
 		{
 			Trace.WriteLine("正在路由...");
+			_routerAgent.Reset();
 			_routerAgent.AddUserMessage($"用户输入: {_context.OriginalRequest}");
 
 			StringBuilder sb = new();
 			await foreach (var chunk in _routerAgent.GetStreamingChatMessageContentsAsync())
 			{
 				sb.Append(chunk.Content);
-
-				if (_currentState != WorkflowState.Routing)
-				{
-					Trace.WriteLine("计划已完成，尝试结束 Routing 对话...");
-					_routerAgent.AddDeveloperMessage("已经完成任务，立即停止对话。");
-				}
-
+				if (_currentState != WorkflowState.Routing) break;
 			}
 			Trace.WriteLine($"路由消息: {sb}");
 		}
@@ -461,6 +457,10 @@ namespace SimpleAgent.Services
 							break;
 					}
 				}
+
+				// 尝试从当前 chunk 提取 Token 消耗
+				var usage = ExtractTokenUsage(chunk.Metadata);
+				UpdateTokens(AgentType.Planner, usage);
 
 				if (_currentState != WorkflowState.Planning)
 				{
@@ -589,6 +589,10 @@ namespace SimpleAgent.Services
 					}
 				}
 
+				// 尝试从当前 chunk 提取 Token 消耗
+				var usage = ExtractTokenUsage(chunk.Metadata);
+				UpdateTokens(AgentType.Developer, usage);
+
 				if (_currentState != WorkflowState.Developing)
 				{
 					Trace.WriteLine("开发已完成，主动中断 Developer 后续输出...");
@@ -624,6 +628,10 @@ namespace SimpleAgent.Services
 				sb.Append(chunk.Content);
 				chatUIService.SendAIMessage(AgentType.Reviewer, chunk.Content ?? "");
 
+				// 尝试从当前 chunk 提取 Token 消耗
+				var usage = ExtractTokenUsage(chunk.Metadata);
+				UpdateTokens(AgentType.Reviewer, usage);
+
 				if (_currentState != WorkflowState.Reviewing)
 				{
 					Trace.WriteLine("审查已完成，主动中断 Reviewer 后续输出...");
@@ -636,6 +644,81 @@ namespace SimpleAgent.Services
 				_reviewerAgent.AddAssistantMessage(sb.ToString());
 			}
 			chatUIService.SendSystemMessage(AgentType.Reviewer);
+		}
+
+		/// <summary>
+		/// 从 Chunk 的元数据中提取 Token 消耗信息
+		/// </summary>
+		/// <param name="metadata">Chunk 的 Metadata 字典</param>
+		/// <returns>返回包含 Input(Prompt), Output(Completion), Total 的元组</returns>
+		private ChatTokenUsage? ExtractTokenUsage(IReadOnlyDictionary<string, object?>? metadata)
+		{
+			// 检查是否包含 "Usage" 键
+			if (metadata != null && metadata.TryGetValue("Usage", out var usageObject) && usageObject != null)
+			{
+				try
+				{
+					// 获取 Semantic Kernel / OpenAI 底层的 Usage 对象属性
+					if (usageObject is ChatTokenUsage usage)
+					{
+						return usage;
+					}
+				}
+				catch (Exception ex)
+				{
+					Trace.WriteLine($"提取 Token 消耗失败: {ex.Message}");
+				}
+			}
+
+			// 如果当前 Chunk 没有 Usage 数据，则返回 0
+			return null;
+		}
+
+		/// <summary>
+		/// 更新界面上的 Token 消耗统计
+		/// </summary>
+		/// <param name="agentType"></param>
+		/// <param name=""></param>
+		private void UpdateTokens(AgentType agentType, ChatTokenUsage? usage)
+		{
+			if (usage == null) return;
+			switch (agentType)
+			{
+				case AgentType.Planner:
+					// 只有当 usage.TotalTokens > 0 时，说明这是包含了使用统计的最终 Chunk
+					if (usage.TotalTokenCount > 0)
+					{
+						var a = int.Parse(mainForm.PAllTokens.Text);
+						mainForm.PAllTokens.Text = $"{a + usage.TotalTokenCount}";
+						var i = int.Parse(mainForm.PInTokens.Text);
+						mainForm.PInTokens.Text = $"{i + usage.InputTokenCount}";
+						var o = int.Parse(mainForm.POutTokens.Text);
+						mainForm.POutTokens.Text = $"{o + usage.OutputTokenCount}";
+					}
+					break;
+				case AgentType.Developer:
+					if (usage.TotalTokenCount > 0)
+					{
+						var a = int.Parse(mainForm.DAllTokens.Text);
+						mainForm.DAllTokens.Text = $"{a + usage.TotalTokenCount}";
+						var i = int.Parse(mainForm.DInTokens.Text);
+						mainForm.DInTokens.Text = $"{i + usage.InputTokenCount}";
+						var o = int.Parse(mainForm.DOutTokens.Text);
+						mainForm.DOutTokens.Text = $"{o + usage.OutputTokenCount}";
+					}
+					break;
+				case AgentType.Reviewer:
+					if (usage.TotalTokenCount > 0)
+					{
+						var a = int.Parse(mainForm.RAllTokens.Text);
+						mainForm.RAllTokens.Text = $"{a + usage.TotalTokenCount}";
+						var i = int.Parse(mainForm.RInTokens.Text);
+						mainForm.RInTokens.Text = $"{i + usage.InputTokenCount}";
+						var o = int.Parse(mainForm.ROutTokens.Text);
+						mainForm.ROutTokens.Text = $"{o + usage.OutputTokenCount}";
+					}
+					break;
+			}
 		}
 	}
 }
