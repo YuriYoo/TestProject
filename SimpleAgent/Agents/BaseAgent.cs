@@ -90,9 +90,9 @@ namespace SimpleAgent.Agents
 		/// 获取模型回复(异步流式输出)
 		/// </summary>
 		/// <returns></returns>
-		public async IAsyncEnumerable<StreamingChatMessageContent> GetStreamingChatMessageContentsAsync()
+		public async IAsyncEnumerable<StreamingChatMessageContent> GetStreamingChatMessageContentsAsync(CancellationTokenSource? cts = null)
 		{
-			await foreach (var chunk in chatCompletionService.GetStreamingChatMessageContentsAsync(chatHistory, settings, kernel))
+			await foreach (var chunk in chatCompletionService.GetStreamingChatMessageContentsAsync(chatHistory, settings, kernel, cts != null ? cts.Token : default))
 			{
 				yield return chunk;
 			}

@@ -386,13 +386,27 @@ namespace SimpleAgent.Services
 			_routerAgent.Reset();
 			_routerAgent.AddUserMessage($"用户输入: {_context.OriginalRequest}");
 
-			StringBuilder sb = new();
-			await foreach (var chunk in _routerAgent.GetStreamingChatMessageContentsAsync())
+			using var cts = new CancellationTokenSource();
+
+			try
 			{
-				sb.Append(chunk.Content);
-				if (_currentState != WorkflowState.Routing) break;
+				StringBuilder sb = new();
+				await foreach (var chunk in _routerAgent.GetStreamingChatMessageContentsAsync(cts))
+				{
+					sb.Append(chunk.Content);
+					if (_currentState != WorkflowState.Routing)
+					{
+						// 触发取消，安全释放底层资源
+						cts.Cancel();
+					}
+				}
+				Trace.WriteLine($"路由消息: {sb}");
 			}
-			Trace.WriteLine($"路由消息: {sb}");
+			catch (OperationCanceledException)
+			{
+				// 捕获取消信息
+				Trace.WriteLine("已安全截断 Router 的输出。");
+			}
 		}
 
 		/// <summary>
