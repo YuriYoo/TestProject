@@ -78,7 +78,7 @@ namespace SimpleAgent.Services
                     if (_logs.Length == 0) return "暂无新日志产生。";
                     var currentLogs = _logs.ToString();
                     _logs.Clear(); // 阅后即焚，清空缓冲区
-                    return StringUtility.TruncateByChars(currentLogs, terminalTruncation);
+                    return Utility.Utility.TruncateByChars(currentLogs, terminalTruncation);
                 }
             }
         }

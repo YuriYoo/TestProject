@@ -111,7 +111,7 @@ namespace SimpleAgent.Plugins
                 else
                     sb.AppendLine($"[状态] 命令以错误码 {process.ExitCode} 退出");
 
-                return StringUtility.TruncateByChars(sb.ToString(), settings.Current.TerminalTruncation);
+                return Utility.Utility.TruncateByChars(sb.ToString(), settings.Current.TerminalTruncation);
             }
             catch (Exception ex)
             {
