@@ -14,11 +14,11 @@ using System.Threading.Tasks;
 
 namespace SimpleAgent.Agents
 {
-	public class DeveloperAgent : BaseAgent
-	{
-		public const string AgentName = "Developer";
-		public const string NickName = "开发智能体";
-		private const string SystemPrompt = @"
+    public class DeveloperAgent : BaseAgent
+    {
+        public const string AgentName = "Developer";
+        public const string NickName = "开发智能体";
+        private const string SystemPrompt = @"
 # Role
 你是一个完全自治的资深软件工程师。
 
@@ -39,12 +39,12 @@ namespace SimpleAgent.Agents
 - 【关键指令】只有当代码修改完毕，且你在本地运行的编译和测试全部通过后，你才可以停止。
 - 【关键指令】当你停止时才允许且必须调用 `submit_for_review` 函数，并在参数中附上你修改了哪些文件的简要总结。";
 
-		public DeveloperAgent(KernelService kernelService, Action<string> submittedAction) : base(SystemPrompt)
-		{
-			kernel = kernelService.BuildKernel();
-			kernel.Plugins.AddFromObject(new DeveloperWorkflowPlugin { OnDevelopmentSubmitted = submittedAction }, "workflow");
+        public DeveloperAgent(IKernelService kernelService, string workingDirectory, Action<string> submittedAction) : base(SystemPrompt)
+        {
+            kernel = kernelService.BuildKernel(workingDirectory);
+            kernel.Plugins.AddFromObject(new WorkflowPlugin { OnDevelopmentSubmitted = submittedAction }, "workflow");
 
-			/*KernelFunction[] kernelFunctions = [
+            /*KernelFunction[] kernelFunctions = [
 				kernel.Plugins.GetFunction("file_system", "read_file"),
 				kernel.Plugins.GetFunction("file_system", "list_directory"),
 				kernel.Plugins.GetFunction("file_system", "path_exists"),
@@ -61,15 +61,15 @@ namespace SimpleAgent.Agents
 				kernel.Plugins.GetFunction("http_test", "send_http_request"),
 			];*/
 
-			chatCompletionService = kernel.GetRequiredService<IChatCompletionService>();
-			settings = new OpenAIPromptExecutionSettings
-			{
-				FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(),
-				Temperature = 0.2,
-				Seed = DeveloperSeed < 0 ? seed : DeveloperSeed,
-			};
+            chatCompletionService = kernel.GetRequiredService<IChatCompletionService>();
+            settings = new OpenAIPromptExecutionSettings
+            {
+                FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(),
+                Temperature = 0.2,
+                Seed = DeveloperSeed < 0 ? seed : DeveloperSeed,
+            };
 
-			Trace.WriteLine($"Developer初始化成功, Seed:{settings.Seed}  Temperature:{settings.Temperature}  TopP:{settings.TopP}");
-		}
-	}
+            Trace.WriteLine($"Developer初始化成功, Seed:{settings.Seed}  Temperature:{settings.Temperature}  TopP:{settings.TopP}");
+        }
+    }
 }

@@ -41,7 +41,8 @@ namespace SimpleAgent.UserControls
 		#region 属性
 
 		[Category("扁平化设置"), Description("滑动条的方向")]
-		public Orientation Orientation
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
+        public Orientation Orientation
 		{
 			get => _orientation;
 			set
@@ -57,21 +58,24 @@ namespace SimpleAgent.UserControls
 		}
 
 		[Category("扁平化设置")]
-		public int Minimum
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
+        public int Minimum
 		{
 			get => _minimum;
 			set { _minimum = value; if (_value < _minimum) Value = _minimum; Invalidate(); }
 		}
 
 		[Category("扁平化设置")]
-		public int Maximum
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
+        public int Maximum
 		{
 			get => _maximum;
 			set { _maximum = value; if (_value > _maximum) Value = _maximum; Invalidate(); }
 		}
 
 		[Category("扁平化设置")]
-		public int Value
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
+        public int Value
 		{
 			get => _value;
 			set
@@ -87,7 +91,8 @@ namespace SimpleAgent.UserControls
 		}
 
 		[Category("扁平化设置")]
-		public Color SliderColor
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
+        public Color SliderColor
 		{
 			get => _sliderColor;
 			set { _sliderColor = value; Invalidate(); }

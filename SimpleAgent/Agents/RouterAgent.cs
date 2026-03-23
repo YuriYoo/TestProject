@@ -34,10 +34,10 @@ namespace SimpleAgent.Agents
 3. 你只需要调用工具，不要输出任何解释、不要与用户打招呼、不要与用户对话。
 4. 你必须调用以下两个函数之一，且只能调用一次： `route_to_planner` 或 `route_to_developer` ";
 
-		public RouterAgent(KernelService kernelService, Action onRouteToPlanner, Action onRouteToDeveloper) : base(SystemPrompt)
+		public RouterAgent(IKernelService kernelService, string workingDirectory, Action onRouteToPlanner, Action onRouteToDeveloper) : base(SystemPrompt)
 		{
-			kernel = kernelService.BuildKernel();
-			kernel.Plugins.AddFromObject(new RouterWorkflowPlugin { OnRouteToPlanner = onRouteToPlanner, OnRouteToDeveloper = onRouteToDeveloper }, "workflow");
+			kernel = kernelService.BuildKernel(workingDirectory);
+			kernel.Plugins.AddFromObject(new WorkflowPlugin { OnRouteToPlanner = onRouteToPlanner, OnRouteToDeveloper = onRouteToDeveloper }, "workflow");
 
 			KernelFunction[] kernelFunctions = [
 				kernel.Plugins.GetFunction("workflow", "route_to_developer"),

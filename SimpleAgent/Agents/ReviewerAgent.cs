@@ -33,10 +33,10 @@ namespace SimpleAgent.Agents
 - 【关键指令】如果所有需求均已满足，你必须调用 `pass_review` 函数。
 - 【关键指令】如果发现有遗漏的功能，或者开发者提交的总结中存在明显的逻辑风险，你必须调用 `fail_review` 函数，并在参数中清晰地列出“缺失了什么”或“哪里需要重做”，以便打回给开发者。";
 
-		public ReviewerAgent(KernelService kernelService, Action onReviewPassed, Action<string> onReviewFailed) : base(SystemPrompt)
+		public ReviewerAgent(IKernelService kernelService, string workingDirectory, Action onReviewPassed, Action<string> onReviewFailed) : base(SystemPrompt)
 		{
-			kernel = kernelService.BuildKernel();
-			kernel.Plugins.AddFromObject(new ReviewerWorkflowPlugin { OnReviewPassed = onReviewPassed, OnReviewFailed = onReviewFailed }, "workflow");
+			kernel = kernelService.BuildKernel(workingDirectory);
+			kernel.Plugins.AddFromObject(new WorkflowPlugin { OnReviewPassed = onReviewPassed, OnReviewFailed = onReviewFailed }, "workflow");
 
 			KernelFunction[] kernelFunctions = [
 				kernel.Plugins.GetFunction("file_system", "read_file"),

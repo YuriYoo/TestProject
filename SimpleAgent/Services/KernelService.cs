@@ -16,86 +16,87 @@ using Microsoft.Extensions.Logging;
 
 namespace SimpleAgent.Services
 {
-	/// <summary>
-	/// SemanticKernel核心服务
-	/// 负责初始化Kernel、注册插件、提供AI聊天和流式输出能力
-	/// 是整个AI系统的中枢控制层
-	/// </summary>
-	public class KernelService
-	{
-		/// <summary>http客户端</summary>
-		private HttpClient _httpClient;
+    public interface IKernelService
+    {
+        /// <summary>
+        /// 构建Kernel实例
+        /// </summary>
+        /// <param name="directory">工作目录</param>
+        /// <returns></returns>
+        Kernel BuildKernel(string directory);
 
-		/// <summary>当前工作目录</summary>
-		private string _workingDirectory;
+        void Initialization();
+    }
 
-		//private ILoggerFactory _loggerFactory;
+    /// <summary>
+    /// SemanticKernel核心服务
+    /// 负责初始化Kernel、注册插件、提供AI聊天和流式输出能力
+    /// 是整个AI系统的中枢控制层
+    /// </summary>
+    public class KernelService : IKernelService
+    {
+        /// <summary>http客户端</summary>
+        private HttpClient _httpClient;
 
-		/// <summary>初始化KernelService</summary>
-		public KernelService(/*, ILoggerFactory loggerFactory*/)
-		{
-			if (string.IsNullOrEmpty(AppSettingsService.Settings.ApiBaseUrl)) throw new InvalidOperationException("必须填写API调用地址");
+        private readonly IServiceProvider serviceProvider;
+        private readonly ILogger<KernelService> logger;
+        private readonly ISettingsService settings;
 
-			//_loggerFactory = loggerFactory;
+        public KernelService(IServiceProvider serviceProvider, ILogger<KernelService> logger, ISettingsService settings)
+        {
+            this.serviceProvider = serviceProvider;
+            this.logger = logger;
+            this.settings = settings;
+        }
 
-			var handler = new HttpLoggingHandler(new HttpClientHandler());
-			_httpClient = new(handler) { BaseAddress = new Uri($"{AppSettingsService.Settings.ApiBaseUrl}v1") };
-			UpdateSettings();
-		}
+        public void Initialization()
+        {
+            if (string.IsNullOrEmpty(settings.Current.ApiBaseUrl)) throw new InvalidOperationException("必须填写API调用地址");
 
-		/// <summary>
-		/// 根据当前设置构建Kernel实例
-		/// </summary>
-		public Kernel BuildKernel()
-		{
-			var builder = Kernel.CreateBuilder();
+            var handler = new HttpLoggingHandler(new HttpClientHandler());
+            _httpClient = new(handler) { BaseAddress = new Uri($"{settings.Current.ApiBaseUrl}v1") };
+        }
 
-			// 挂载统一的日志工厂
-			//builder.Services.AddSingleton(_loggerFactory);
+        public Kernel BuildKernel(string directory)
+        {
+            directory = SetWorkingDirectory(directory);
+            var builder = Kernel.CreateBuilder();
 
-			// 根据提供商类型注册不同的Chat Completion服务
+            // 自定义兼容端点
+            builder.AddOpenAIChatCompletion(settings.Current.ModelId, settings.Current.ApiKey, httpClient: _httpClient);
 
-			// OpenAI官方API，或自定义端点（Ollama、OpenRouter、国内服务商等）
-			//builder.AddOpenAIChatCompletion(AppSettingsService.Settings.ModelId, AppSettingsService.Settings.ApiKey, httpClient: CreateHttpClientWithBaseUrl(AppSettingsService.Settings.ApiBaseUrl));
+            // 将自定义的日志拦截器注册到服务中
+            builder.Services.AddSingleton<IFunctionInvocationFilter, FunctionLoggingFilter>();
 
-			// 微软Azure OpenAI服务
-			//builder.AddAzureOpenAIChatCompletion(deploymentName: AppSettingsService.Settings.AzureDeploymentName, endpoint: AppSettingsService.Settings.AzureEndpoint, apiKey: AppSettingsService.Settings.ApiKey);
+            // 注册工具
+            var fileSystemPlugin = serviceProvider.GetRequiredService<FileSystemPlugin>();
+            var terminalPlugin = serviceProvider.GetRequiredService<TerminalPlugin>();
+            var httpTestPlugin = serviceProvider.GetRequiredService<HttpTestPlugin>();
 
-			// 自定义兼容端点
-			builder.AddOpenAIChatCompletion(AppSettingsService.Settings.ModelId, AppSettingsService.Settings.ApiKey, httpClient: _httpClient);
-			//builder.AddOpenAIChatCompletion(AppSettingsService.Settings.ModelId, new Uri(AppSettingsService.Settings.ApiBaseUrl), AppSettingsService.Settings.ApiKey);
+            fileSystemPlugin.WorkingDirectory = directory;
+            terminalPlugin.WorkingDirectory = directory;
 
-			// 将自定义的日志拦截器注册到服务中
-			builder.Services.AddSingleton<IFunctionInvocationFilter, FunctionLoggingFilter>();
+            builder.Plugins.AddFromObject(httpTestPlugin, "http_test");
+            builder.Plugins.AddFromObject(fileSystemPlugin, "file_system");
+            builder.Plugins.AddFromObject(terminalPlugin, "terminal");
 
-			builder.Plugins.AddFromType<HttpTestPlugin>("http_test");
-			builder.Plugins.AddFromObject(new FileSystemPlugin(_workingDirectory), "file_system");
-			builder.Plugins.AddFromObject(new TerminalPlugin(_workingDirectory), "terminal");
+            // 构建Kernel
+            return builder.Build();
+        }
 
-			// 构建Kernel
-			return builder.Build();
-		}
-
-		/// <summary>
-		/// 更新工作目录（需要重新构建Kernel）
-		/// </summary>
-		public void SetWorkingDirectory(string directory)
-		{
-			// 确保工作目录本身是绝对路径，并且以目录分隔符结尾，防止 "C:\Work" 匹配到 "C:\Workspace"
-			_workingDirectory = Path.GetFullPath(directory);
-			if (!_workingDirectory.EndsWith(Path.DirectorySeparatorChar.ToString()))
-			{
-				_workingDirectory += Path.DirectorySeparatorChar;
-			}
-			Directory.CreateDirectory(directory);
-		}
-
-		/// <summary>
-		/// 更新设置（需要重新构建Kernel）
-		/// </summary>
-		public void UpdateSettings()
-		{
-			SetWorkingDirectory(AppSettingsService.Settings.WorkingDirectory);
-		}
-	}
+        /// <summary>
+        /// 设置工作目录
+        /// </summary>
+        private string SetWorkingDirectory(string directory)
+        {
+            // 确保工作目录本身是绝对路径，并且以目录分隔符结尾，防止 "C:\Work" 匹配到 "C:\Workspace"
+            var _workingDirectory = Path.GetFullPath(directory);
+            if (!_workingDirectory.EndsWith(Path.DirectorySeparatorChar.ToString()))
+            {
+                _workingDirectory += Path.DirectorySeparatorChar;
+            }
+            Directory.CreateDirectory(directory);
+            return _workingDirectory;
+        }
+    }
 }

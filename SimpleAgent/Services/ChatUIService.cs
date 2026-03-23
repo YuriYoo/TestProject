@@ -19,31 +19,35 @@ namespace SimpleAgent.Services
 		/// <summary>智能体是否正在输出Map (null时表示需要创建新消息, 否则表示已有需要追加聊天内容)</summary>
 		private Dictionary<AgentType, ChatMessageItem?> inChat;
 
-		public ChatUIService(MainForm mainForm)
-		{
-			agentTabs = new()
-			{
-				{ AgentType.Planner, mainForm.PlannerAgentTab },
-				{ AgentType.Developer, mainForm.CoderAgentTab },
-				{ AgentType.Reviewer, mainForm.ReviewerAgentTab },
-			};
+		/// <summary>
+		/// 初始化
+		/// </summary>
+		/// <param name="mainForm"></param>
+		public void Initialization(MainForm mainForm)
+        {
+            agentTabs = new()
+            {
+                { AgentType.Planner, mainForm.PlannerAgentTab },
+                { AgentType.Developer, mainForm.CoderAgentTab },
+                { AgentType.Reviewer, mainForm.ReviewerAgentTab },
+            };
 
-			chatPanels = new()
-			{
-				{ AgentType.Planner, mainForm.PlannerChatPanel },
-				{ AgentType.Developer, mainForm.CoderChatPanel },
-				{ AgentType.Reviewer, mainForm.ReviewerChatPanel },
-			};
+            chatPanels = new()
+            {
+                { AgentType.Planner, mainForm.PlannerChatPanel },
+                { AgentType.Developer, mainForm.CoderChatPanel },
+                { AgentType.Reviewer, mainForm.ReviewerChatPanel },
+            };
 
-			inChat = new()
-			{
-				{ AgentType.Planner, null },
-				{ AgentType.Developer, null },
-				{ AgentType.Reviewer, null },
-			};
-		}
+            inChat = new()
+            {
+                { AgentType.Planner, null },
+                { AgentType.Developer, null },
+                { AgentType.Reviewer, null },
+            };
+        }
 
-		public void SendUserMessage(AgentType agentType, string message)
+        public void SendUserMessage(AgentType agentType, string message)
 		{
 			if (agentType == AgentType.Router)
 			{
@@ -139,14 +143,14 @@ namespace SimpleAgent.Services
 			}
 		}
 
-		/// <summary>
-		/// 创建一条消息记录
-		/// </summary>
-		/// <param name="messageType">消息类型</param>
-		/// <param name="panel">发送到哪个消息面板</param>
-		/// <param name="message">消息内容</param>
-		/// <returns></returns>
-		private ChatMessageItem CreateMessageItem(MessageType messageType, AgentType agentType, string message = "")
+        /// <summary>
+        /// 创建一条消息记录
+        /// </summary>
+        /// <param name="messageType">消息类型</param>
+        /// <param name="agentType">发送到哪个消息面板</param>
+        /// <param name="message">消息内容</param>
+        /// <returns></returns>
+        private ChatMessageItem CreateMessageItem(MessageType messageType, AgentType agentType, string message = "")
 		{
 			var panel = chatPanels[agentType];
 			if (messageType == MessageType.AI && string.IsNullOrWhiteSpace(message))

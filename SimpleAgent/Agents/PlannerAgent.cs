@@ -1,4 +1,5 @@
-﻿using Microsoft.SemanticKernel;
+﻿using Microsoft.Agents.AI;
+using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Agents;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
@@ -9,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -37,10 +39,10 @@ namespace SimpleAgent.Agents
 - 【关键指令】仅当用户明确表示“计划没问题”、“可以开始开发”或类似同意的表述时，你才可以调用，并且必须调用 `finalize_plan` 函数，并将最终版的 Markdown 计划作为参数传入，此时不需要回复用户任何文字。在此之前，保持与用户的对话。
 - 你可以向用户询问是否满意计划，但是不需要向用户说明调用什么函数。";
 
-		public PlannerAgent(KernelService kernelService, Action<string> onPlanFinalized) : base(SystemPrompt)
+		public PlannerAgent(IKernelService kernelService, string workingDirectory, Action<string> onPlanFinalized) : base(SystemPrompt)
 		{
-			kernel = kernelService.BuildKernel();
-			kernel.Plugins.AddFromObject(new PlannerWorkflowPlugin { OnPlanFinalized = onPlanFinalized }, "workflow");
+			kernel = kernelService.BuildKernel(workingDirectory);
+			kernel.Plugins.AddFromObject(new WorkflowPlugin { OnPlanFinalized = onPlanFinalized }, "workflow");
 
 			KernelFunction[] kernelFunctions = [
 				kernel.Plugins.GetFunction("file_system", "read_file"),
@@ -50,7 +52,7 @@ namespace SimpleAgent.Agents
 				kernel.Plugins.GetFunction("workflow", "finalize_plan"),
 			];
 
-			chatCompletionService = kernel.GetRequiredService<IChatCompletionService>();
+            chatCompletionService = kernel.GetRequiredService<IChatCompletionService>();
 			settings = new OpenAIPromptExecutionSettings
 			{
 				FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(kernelFunctions),
@@ -60,5 +62,5 @@ namespace SimpleAgent.Agents
 
 			Trace.WriteLine($"Planner初始化成功, Seed:{settings.Seed}  Temperature:{settings.Temperature}  TopP:{settings.TopP}");
 		}
-	}
+    }
 }
