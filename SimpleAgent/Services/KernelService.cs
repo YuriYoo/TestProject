@@ -24,8 +24,6 @@ namespace SimpleAgent.Services
         /// <param name="directory">工作目录</param>
         /// <returns></returns>
         Kernel BuildKernel(string directory);
-
-        void Initialization();
     }
 
     /// <summary>
@@ -47,10 +45,7 @@ namespace SimpleAgent.Services
             this.serviceProvider = serviceProvider;
             this.logger = logger;
             this.settings = settings;
-        }
 
-        public void Initialization()
-        {
             if (string.IsNullOrEmpty(settings.Current.ApiBaseUrl)) throw new InvalidOperationException("必须填写API调用地址");
 
             var handler = new HttpLoggingHandler(new HttpClientHandler());

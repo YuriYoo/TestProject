@@ -25,13 +25,7 @@ namespace SimpleAgent.Services
         {
             this.logger = logger;
             this.settings = settings;
-        }
 
-        /// <summary>
-        /// 初始化
-        /// </summary>
-        public void Initialization()
-        {
             _httpClient = new HttpClient { BaseAddress = new Uri(settings.Current.ApiBaseUrl) };
 
             // GPUStack 使用标准的 Bearer Token 进行鉴权

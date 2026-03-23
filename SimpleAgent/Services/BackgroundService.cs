@@ -215,7 +215,7 @@ namespace SimpleAgent.Services
         /// <param name="command"></param>
         /// <param name="path"></param>
         /// <returns></returns>
-        private static ProcessStartInfo CreateProcessStartInfo(string command, string path)
+        public static ProcessStartInfo CreateProcessStartInfo(string command, string path)
         {
             return new ProcessStartInfo
             {
@@ -225,7 +225,7 @@ namespace SimpleAgent.Services
                 UseShellExecute = false, // 必须为 false 才能重定向输出
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
-                CreateNoWindow = false,
+                CreateNoWindow = true,
                 StandardOutputEncoding = Encoding.UTF8,
                 StandardErrorEncoding = Encoding.UTF8,
             };

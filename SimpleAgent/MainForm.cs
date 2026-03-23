@@ -43,12 +43,8 @@ namespace SimpleAgent
         public MainForm(ILogger<MainForm> logger, ISettingsService settings, IKernelService kernelService, IBackgroundService backgroundService, MultiAgentOrchestrator multiAgentOrchestrator, GPUStackClient stackClient, ChatUIService chatUIService)
         {
             this.logger = logger;
-
             this.settings = settings;
-            settings.Load();
-
             this.kernelService = kernelService;
-            kernelService.Initialization();
 
             this.multiAgentOrchestrator = multiAgentOrchestrator;
             multiAgentOrchestrator.Initialization(settings.Current.WorkingDirectory);
@@ -56,10 +52,8 @@ namespace SimpleAgent
             multiAgentOrchestrator.OnResetUserInputState += RecoveryState;
 
             InitializeComponent();
-            InitializeAgentTab();
 
             this.stackClient = stackClient;
-            stackClient.Initialization();
 
             this.chatUIService = chatUIService;
             chatUIService.Initialization(this);
@@ -67,6 +61,9 @@ namespace SimpleAgent
             this.backgroundService = backgroundService;
             backgroundService.OnAddServer += (serviceId) => BackgroundServerListBox.Items.Add(serviceId);
             backgroundService.OnRemoveServer += BackgroundServerListBox.Items.Remove;
+
+            // 初始化
+            InitializeAgentTab();
 
             // 设置自定义渲染器
             TopMenu.Renderer = new Renderer.MenuStripRenderer();

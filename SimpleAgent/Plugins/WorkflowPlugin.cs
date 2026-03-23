@@ -45,7 +45,6 @@ namespace SimpleAgent.Plugins
             return "[系统通知] 路由成功！请立即停止调用任何工具，并直接结束对话。";
         }
 
-
         [KernelFunction("finalize_plan")]
 		[Description("【极其重要】只有在你已经向用户输出了完整的 Markdown 开发计划，并且用户明确回复了“同意”、“没问题”、“就按这个做”等确认语后，才允许调用此函数结束规划！如果用户只是在回答你的提问，或者还在提修改意见，严禁调用此函数！")]
 		public string FinalizePlan([Description("详细的开发计划")] string plan)

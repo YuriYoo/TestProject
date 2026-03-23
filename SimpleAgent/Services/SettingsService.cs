@@ -32,7 +32,7 @@ namespace SimpleAgent.Services
     /// 应用程序设置持久化服务
     /// 负责将AppSettings对象序列化为JSON文件并从文件恢复
     /// </summary>
-    public class AppSettingsService : ISettingsService
+    public class SettingsService : ISettingsService
     {
         /// <summary>配置文件存储目录</summary>
         private static readonly string AppDataDir = Environment.CurrentDirectory;
@@ -40,7 +40,7 @@ namespace SimpleAgent.Services
         /// <summary>配置文件完整路径</summary>
         private static readonly string SettingsFilePath = Path.Combine(AppDataDir, "settings.json");
 
-        ILogger<AppSettingsService> logger;
+        ILogger<SettingsService> logger;
 
         /// <summary>获取当前应用程序的设置</summary>
         public AppSettings Current => current;
@@ -48,9 +48,10 @@ namespace SimpleAgent.Services
         /// <summary>当前加载的设置</summary>
         private AppSettings current = new();
 
-        public AppSettingsService(ILogger<AppSettingsService> logger)
+        public SettingsService(ILogger<SettingsService> logger)
         {
             this.logger = logger;
+            Load();
         }
 
         /// <summary>
