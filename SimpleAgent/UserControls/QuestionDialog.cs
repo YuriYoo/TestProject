@@ -8,48 +8,26 @@ using System.Windows.Forms;
 
 namespace SimpleAgent.UserControls
 {
-    /// <summary>
-    /// 向用户提出的问题选项
-    /// </summary>
-    public class QuestionOption
-    {
-        public string Text { get; set; } = string.Empty;
-        public object? Value { get; set; }
-
-        public QuestionOption() { }
-
-        public QuestionOption(string text, object? value = null)
-        {
-            Text = text;
-            Value = value;
-        }
-
-        public override string ToString()
-        {
-            return Text;
-        }
-    }
-
     public partial class QuestionDialog : UserControl
     {
         /// <summary>选择模式</summary>
         private QuestionMode _mode = QuestionMode.NoSelect;
 
         /// <summary>选项列表</summary>
-        private List<QuestionOption> _options = [];
+        private List<string> _options = [];
 
         /// <summary>当前选择的选项索引</summary>
         private List<int> _selectedIndices = [];
 
-        public event EventHandler? ConfirmClicked;
-        public event EventHandler? CancelClicked;
+        public event Action<List<int>, List<string>>? ConfirmClicked;
+        public event Action? CancelClicked;
 
         public QuestionDialog()
         {
             InitializeComponent();
         }
 
-        public QuestionDialog(string question, QuestionMode mode, List<QuestionOption> options)
+        public QuestionDialog(string question, QuestionMode mode, List<string> options)
         {
             InitializeComponent();
             SetQuestion(question, mode, options);
@@ -61,17 +39,14 @@ namespace SimpleAgent.UserControls
         /// <param name="question"></param>
         /// <param name="mode"></param>
         /// <param name="options"></param>
-        public void SetQuestion(string question, QuestionMode mode, List<QuestionOption> options)
+        public void SetQuestion(string question, QuestionMode mode, List<string> options)
         {
             _mode = mode;
             _options = options ?? [];
             _selectedIndices.Clear();
 
             QuestionText.Text = question;
-            if (mode != QuestionMode.NoSelect)
-            {
-                BuildOptions();
-            }
+            BuildOptions();
         }
 
         /// <summary>
@@ -79,70 +54,71 @@ namespace SimpleAgent.UserControls
         /// </summary>
         private void BuildOptions()
         {
-            OptionPanel.Controls.Clear();
             SuspendLayout();
-
-            for (int i = 0; i < _options.Count; i++)
+            OptionPanel.Controls.Clear();
+            if (_mode != QuestionMode.NoSelect)
             {
-                var option = _options[i];
-                var optionItem = new QuestionOptionItem(option.Text)
+                for (int i = 0; i < _options.Count; i++)
                 {
-                    Width = OptionPanel.Width,
-                    Dock = DockStyle.Bottom,
-                    Tag = i
-                };
-
-                // 设置切换选项事件
-                optionItem.SelectedChanged += (s, e) =>
-                {
-                    if (_mode == QuestionMode.SingleSelect)
+                    var option = _options[i];
+                    var optionItem = new QuestionOptionItem(option)
                     {
-                        if (optionItem.IsSelected)
+                        Width = OptionPanel.Width,
+                        Dock = DockStyle.Bottom,
+                        Tag = i
+                    };
+
+                    // 设置切换选项事件
+                    optionItem.SelectedChanged += (s, e) =>
+                    {
+                        if (_mode == QuestionMode.SingleSelect)
                         {
-                            foreach (Control ctrl in OptionPanel.Controls)
+                            if (optionItem.IsSelected)
                             {
-                                if (ctrl is QuestionOptionItem item && item != optionItem)
+                                foreach (Control ctrl in OptionPanel.Controls)
                                 {
-                                    item.IsSelected = false;
+                                    if (ctrl is QuestionOptionItem item && item != optionItem)
+                                    {
+                                        item.IsSelected = false;
+                                    }
+                                }
+                                _selectedIndices.Clear();
+                                _selectedIndices.Add((int)optionItem.Tag);
+                            }
+                        }
+                        else if (_mode == QuestionMode.MultiSelect)
+                        {
+                            var index = (int)optionItem.Tag;
+                            if (optionItem.IsSelected)
+                            {
+                                if (!_selectedIndices.Contains(index))
+                                {
+                                    _selectedIndices.Add(index);
                                 }
                             }
-                            _selectedIndices.Clear();
-                            _selectedIndices.Add((int)optionItem.Tag);
-                        }
-                    }
-                    else if (_mode == QuestionMode.MultiSelect)
-                    {
-                        var index = (int)optionItem.Tag;
-                        if (optionItem.IsSelected)
-                        {
-                            if (!_selectedIndices.Contains(index))
+                            else
                             {
-                                _selectedIndices.Add(index);
+                                _selectedIndices.Remove(index);
                             }
                         }
-                        else
+                    };
+
+                    // 设置点击事件
+                    optionItem.Clicked += (s, e) =>
+                    {
+                        if (_mode == QuestionMode.SingleSelect)
                         {
-                            _selectedIndices.Remove(index);
+                            optionItem.IsSelected = true;
                         }
-                    }
-                };
+                        else if (_mode == QuestionMode.MultiSelect)
+                        {
+                            optionItem.IsSelected = !optionItem.IsSelected;
+                        }
+                    };
 
-                // 设置点击事件
-                optionItem.Clicked += (s, e) =>
-                {
-                    if (_mode == QuestionMode.SingleSelect)
-                    {
-                        optionItem.IsSelected = true;
-                    }
-                    else if (_mode == QuestionMode.MultiSelect)
-                    {
-                        optionItem.IsSelected = !optionItem.IsSelected;
-                    }
-                };
-
-                OptionPanel.Controls.Add(optionItem);
+                    OptionPanel.Controls.Add(optionItem);
+                }
             }
-
             // 重新计算尺寸
             ResumeLayout();
             Visible = true;
@@ -152,9 +128,9 @@ namespace SimpleAgent.UserControls
         /// 获取用户选择的选项列表
         /// </summary>
         /// <returns></returns>
-        public List<QuestionOption> GetSelectedOptions()
+        public List<string> GetSelectedOptions()
         {
-            var list = new List<QuestionOption>();
+            var list = new List<string>();
             foreach (var item in _selectedIndices)
             {
                 list.Add(_options[item]);
@@ -178,8 +154,8 @@ namespace SimpleAgent.UserControls
         /// <param name="e"></param>
         private void btnConfirm_Click(object sender, EventArgs e)
         {
-            Visible = false;
-            ConfirmClicked?.Invoke(this, EventArgs.Empty);
+            ConfirmClicked?.Invoke(GetSelectedIndices(), GetSelectedOptions());
+            Reset();
         }
 
         /// <summary>
@@ -189,8 +165,15 @@ namespace SimpleAgent.UserControls
         /// <param name="e"></param>
         private void btnCancel_Click(object sender, EventArgs e)
         {
+            CancelClicked?.Invoke();
+            Reset();
+        }
+
+        private void Reset()
+        {
             Visible = false;
-            CancelClicked?.Invoke(this, EventArgs.Empty);
+            ConfirmClicked = null;
+            CancelClicked = null;
         }
 
         /// <summary>

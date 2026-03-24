@@ -52,7 +52,7 @@
             CoreLabel = new ToolStripStatusLabel();
             RefreshLabel = new ToolStripStatusLabel();
             PlannerChatPanel = new FlowLayoutPanel();
-            questionDialog1 = new SimpleAgent.UserControls.QuestionDialog();
+            QuestionDialog = new SimpleAgent.UserControls.QuestionDialog();
             ContentContainer = new TableLayoutPanel();
             LeftPanel = new TableLayoutPanel();
             label6 = new Label();
@@ -331,19 +331,19 @@
             PlannerChatPanel.WrapContents = false;
             PlannerChatPanel.SizeChanged += PlannerChatPanel_SizeChanged;
             // 
-            // questionDialog1
+            // QuestionDialog
             // 
-            questionDialog1.AutoSize = true;
-            questionDialog1.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-            questionDialog1.BackColor = Color.WhiteSmoke;
-            questionDialog1.Dock = DockStyle.Bottom;
-            questionDialog1.Location = new Point(0, 429);
-            questionDialog1.Margin = new Padding(0);
-            questionDialog1.MinimumSize = new Size(220, 0);
-            questionDialog1.Name = "questionDialog1";
-            questionDialog1.Size = new Size(676, 88);
-            questionDialog1.TabIndex = 0;
-            questionDialog1.Visible = false;
+            QuestionDialog.AutoSize = true;
+            QuestionDialog.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            QuestionDialog.BackColor = Color.WhiteSmoke;
+            QuestionDialog.Dock = DockStyle.Bottom;
+            QuestionDialog.Location = new Point(0, 429);
+            QuestionDialog.Margin = new Padding(0);
+            QuestionDialog.MinimumSize = new Size(220, 0);
+            QuestionDialog.Name = "QuestionDialog";
+            QuestionDialog.Size = new Size(676, 88);
+            QuestionDialog.TabIndex = 0;
+            QuestionDialog.Visible = false;
             // 
             // ContentContainer
             // 
@@ -467,7 +467,7 @@
             // ChatPanelContainer
             // 
             MiddlePanel.SetColumnSpan(ChatPanelContainer, 2);
-            ChatPanelContainer.Controls.Add(questionDialog1);
+            ChatPanelContainer.Controls.Add(QuestionDialog);
             ChatPanelContainer.Controls.Add(PlannerChatPanel);
             ChatPanelContainer.Controls.Add(CoderChatPanel);
             ChatPanelContainer.Controls.Add(ReviewerChatPanel);
@@ -1077,6 +1077,6 @@
 		public Label RAllTokens;
 		public Label RInTokens;
 		public Label ROutTokens;
-        private UserControls.QuestionDialog questionDialog1;
+        public UserControls.QuestionDialog QuestionDialog;
     }
 }
