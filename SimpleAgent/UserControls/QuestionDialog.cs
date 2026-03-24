@@ -39,7 +39,7 @@ namespace SimpleAgent.UserControls
         /// <param name="question"></param>
         /// <param name="mode"></param>
         /// <param name="options"></param>
-        public void SetQuestion(string question, QuestionMode mode, List<string> options)
+        public void SetQuestion(string question, QuestionMode mode, List<string>? options)
         {
             _mode = mode;
             _options = options ?? [];

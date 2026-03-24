@@ -25,7 +25,7 @@ namespace SimpleAgent.UserControls
 		}
 
 		[Category("外观")]
-		[Description("智能体名称")]
+		[Description("是否选中")]
 		[DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
 		public bool IsSelected
 		{

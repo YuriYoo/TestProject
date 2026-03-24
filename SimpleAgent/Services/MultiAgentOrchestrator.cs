@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
@@ -173,46 +174,44 @@ namespace SimpleAgent.Services
 
             try
             {
+                var isSaveLog = false;
                 await foreach (var chunk in agent.GetStreamingChatMessageContentsAsync())
                 {
-                    // 遍历当前 chunk 中的所有内容项
-                    foreach (var item in chunk.Items)
+                    // 获取所有普通的消息文本内容
+                    var textContents = chunk.Items.OfType<StreamingTextContent>();
+                    foreach (var textContent in textContents)
                     {
-                        switch (item)
+                        sb.Append(textContent.Text);
+                        chatUIService.SendAIMessage(agentType, textContent.Text ?? "");
+                    }
+
+                    // 获取所有工具调用的内容（模型决定调用插件时会触发）这里会流式输出函数名、参数等, Arguments 参数是一段段 JSON 字符串流式到达的
+                    var functionCallUpdates = chunk.Items.OfType<StreamingFunctionCallUpdateContent>();
+                    foreach (var functionCallUpdate in functionCallUpdates)
+                    {
+                        // 如果遇到了新的 CallId，说明开始了一个新的工具调用
+                        if (!string.IsNullOrEmpty(functionCallUpdate.CallId) && functionCallUpdate.CallId != currentCallId)
                         {
-                            // 普通的消息文本内容
-                            case StreamingTextContent textContent:
-                                sb.Append(textContent.Text);
-                                chatUIService.SendAIMessage(agentType, textContent.Text ?? "");
-                                break;
+                            // 如果之前已经有未结束的调用（并行调用场景），在这里触发上一个调用的结束
+                            if (currentCallId != null)
+                            {
+                                SendToolMessage(agentType, currentFunctionName, currentLine, argumentsBuilder.ToString());
+                            }
 
-                            // 工具/函数调用的内容（模型决定调用插件时会触发）这里会流式输出函数名、参数等, Arguments 参数是一段段 JSON 字符串流式到达的
-                            case StreamingFunctionCallUpdateContent functionCallUpdate:
+                            // 记录新调用的状态
+                            currentCallId = functionCallUpdate.CallId;
+                            currentFunctionName = functionCallUpdate.Name;
+                            argumentsBuilder.Clear();
 
-                                // 如果遇到了新的 CallId，说明开始了一个新的工具调用
-                                if (!string.IsNullOrEmpty(functionCallUpdate.CallId) && functionCallUpdate.CallId != currentCallId)
-                                {
-                                    // 如果之前已经有未结束的调用（并行调用场景），在这里触发上一个调用的结束
-                                    if (currentCallId != null)
-                                    {
-                                        SendToolMessage(agentType, currentFunctionName, currentLine, argumentsBuilder.ToString());
-                                    }
-
-                                    // 记录新调用的状态
-                                    currentCallId = functionCallUpdate.CallId;
-                                    currentFunctionName = functionCallUpdate.Name;
-                                    argumentsBuilder.Clear();
-
-                                    currentLine = SendToolMessage(agentType, functionCallUpdate.Name, -1, functionCallUpdate.Arguments);
-                                }
-
-                                // 持续拼接参数 (JSON 片段)
-                                if (functionCallUpdate.Arguments != null)
-                                {
-                                    argumentsBuilder.Append(functionCallUpdate.Arguments);
-                                }
-                                break;
+                            currentLine = SendToolMessage(agentType, functionCallUpdate.Name, -1, functionCallUpdate.Arguments);
                         }
+
+                        // 持续拼接参数 (JSON 片段)
+                        if (functionCallUpdate.Arguments != null)
+                        {
+                            argumentsBuilder.Append(functionCallUpdate.Arguments);
+                        }
+                        break;
                     }
 
                     // 尝试从当前 chunk 提取 Token 消耗
@@ -224,18 +223,21 @@ namespace SimpleAgent.Services
                     {
                         // 触发取消，安全释放底层资源
                         cts.Cancel();
-
-                        switch (agentType)
+                        if (!isSaveLog)
                         {
-                            case AgentType.Planner:
-                                Utility.Utility.ChatHistorySave(agentType, _plannerAgent.chatHistory);
-                                break;
-                            case AgentType.Developer:
-                                Utility.Utility.ChatHistorySave(agentType, _developerAgent.chatHistory);
-                                break;
-                            case AgentType.Reviewer:
-                                Utility.Utility.ChatHistorySave(agentType, _reviewerAgent.chatHistory);
-                                break;
+                            isSaveLog = true;
+                            switch (agentType)
+                            {
+                                case AgentType.Planner:
+                                    Utility.Utility.ChatHistorySave(agentType, _plannerAgent.chatHistory);
+                                    break;
+                                case AgentType.Developer:
+                                    Utility.Utility.ChatHistorySave(agentType, _developerAgent.chatHistory);
+                                    break;
+                                case AgentType.Reviewer:
+                                    Utility.Utility.ChatHistorySave(agentType, _reviewerAgent.chatHistory);
+                                    break;
+                            }
                         }
                     }
                 }
@@ -267,7 +269,11 @@ namespace SimpleAgent.Services
         {
             logger.LogInformation("Planner 正在与您规划需求...");
 
-            _plannerAgent.AddUserMessage(_context.OriginalRequest);
+            if (string.IsNullOrEmpty(_context.DetailedPlan))
+            {
+                _plannerAgent.AddUserMessage(_context.OriginalRequest);
+            }
+
             await ProcessAgentStreamAsync(_plannerAgent, AgentType.Planner, () => _currentState == WorkflowState.Planning);
 
             // 如果状态变了（因为模型调用了 FinalizePlan 触发了回调），循环会进入下一阶段
@@ -310,21 +316,21 @@ namespace SimpleAgent.Services
             // 首次发送的为执行计划, 后续的为 Reviewer 修改
             if (_context.DevCycleCount == 1)
             {
-                // 如果有计划
-                if (string.IsNullOrEmpty(_context.DetailedPlan))
-                {
-                    _developerAgent.AddUserMessage($"请根据以下计划开发：\n{_context.DetailedPlan}");
-                }
                 // 如果没有计划
-                else
+                if (string.IsNullOrEmpty(_context.DetailedPlan))
                 {
                     _context.DetailedPlan = _context.OriginalRequest;
                     _developerAgent.AddUserMessage(_context.DetailedPlan);
                 }
+                // 如果有计划
+                else
+                {
+                    _developerAgent.AddUserMessage($"请根据以下计划开发：\n{_context.DetailedPlan}");
+                }
             }
             else if (!string.IsNullOrEmpty(_context.ReviewerFeedback))
             {
-                _developerAgent.AddUserMessage($"Reviewer 打回，要求修改：{_context.ReviewerFeedback}");
+                _developerAgent.AddUserMessage($"Reviewer 驳回，要求做如下修改：\n{_context.ReviewerFeedback}");
                 _context.ReviewerFeedback = string.Empty;
             }
             else

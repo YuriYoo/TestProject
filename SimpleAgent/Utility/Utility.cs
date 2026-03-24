@@ -110,7 +110,7 @@ namespace SimpleAgent.Utility
                     outstr = $"获取文件列表";
                     if (line >= 0)
                     {
-                        var arg1 = args.TryGetValue("directoryPath", out var directoryPath) ? directoryPath.ToString() : "参数错误";
+                        var arg1 = args.TryGetValue("directoryPath", out var directoryPath) ? directoryPath.ToString() : "当前工作目录";
                         outstr = $"[ {outstr} 工具调用完成]  路径: {arg1}";
                     }
                     break;
@@ -222,8 +222,13 @@ namespace SimpleAgent.Utility
                     outstr = $"发送HTTP请求";
                     if (line >= 0)
                     {
-                        var arg1 = args.TryGetValue("method", out var method) ? method.ToString() : "参数错误";
-                        var arg2 = args.TryGetValue("url", out var url) ? url.ToString() : "参数错误";
+                        var arg1 = "参数错误";
+                        var arg2 = "参数错误";
+                        if (args.TryGetValue("url", out var url))
+                        {
+                            arg2 = url.ToString();
+                            arg1 = args.TryGetValue("method", out var method) ? method.ToString() : "GET";
+                        }
                         outstr = $"[ {outstr} 工具调用完成]  方法: {arg1}  URL: {arg2}";
                     }
                     break;

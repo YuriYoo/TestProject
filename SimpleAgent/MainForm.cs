@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Agents;
 using Microsoft.SemanticKernel.ChatCompletion;
@@ -11,7 +11,6 @@ using SimpleAgent.Utility;
 using System.Diagnostics;
 using System.Text;
 using System.Threading.Tasks;
-using static System.Windows.Forms.DataFormats;
 
 namespace SimpleAgent
 {
@@ -88,43 +87,106 @@ namespace SimpleAgent
         }
 
         bool isStart = false;
+
         private async void SendButton_Click(object? sender, EventArgs e)
         {
             string text = UserInput.Text.Trim();
             if (string.IsNullOrEmpty(text)) return;
 
-            // 显示用户输入
-            chatUIService.SendUserMessage(AgentType.Planner, text);
             UserInput.Clear();
             UserInput.Focus();
 
             // 禁用按钮，防止 AI 回复期间重复点击
             SendButton.Enabled = false;
 
+            if (isStart)
+            {
+                multiAgentOrchestrator.ProvideUserInput(text);
+                chatUIService.SendUserMessage(AgentType.Planner, text);
+                return;
+            }
+
+            // 显示用户输入
+            if (PlannerAgentTab.IsSelected)
+            {
+                chatUIService.SendUserMessage(AgentType.Planner, text);
+            }
+            else if (CoderAgentTab.IsSelected)
+            {
+                chatUIService.SendUserMessage(AgentType.Developer, text);
+            }
+            else
+            {
+                var (confirm, indices, options) = await chatUIService.ShowQuestion("仅可以与 [规划智能体] 或 [编程智能体] 进行对话，请根据需要进行切换。", QuestionMode.NoSelect, null);
+            }
+
             // 判断是否需要进行规划
             var plan = await routerAgent.HandleRoutingAsync(text);
             if (plan)
             {
-                if (isStart)
+                if (!PlannerAgentTab.IsSelected)
                 {
-                    multiAgentOrchestrator.ProvideUserInput(text);
-                }
-                else
-                {
-                    isStart = true;
-                    await multiAgentOrchestrator.RunWorkflowAsync(text, WorkflowState.Planning);
+                    var (confirm, indices, options) = await chatUIService.ShowQuestion("对于该需求，模型建议先进行规划再开发，是否确认转交给[规划智能体]？", QuestionMode.NoSelect, null);
+                    // 转交给Planner
+                    if (confirm)
+                    {
+                        CoderChatPanel.Controls.RemoveAt(CoderChatPanel.Controls.Count - 1);
+                        chatUIService.SendUserMessage(AgentType.Planner, text);
+                        RunPlanning(text);
+                    }
+                    // 继续使用
+                    else
+                    {
+                        RunDeveloping(text);
+                    }
                 }
             }
             else
             {
-                await multiAgentOrchestrator.RunWorkflowAsync(text, WorkflowState.Developing);
+                if (!CoderAgentTab.IsSelected)
+                {
+                    var (confirm, indices, options) = await chatUIService.ShowQuestion("对于该需求，模型建议可以直接开发，是否确认转交给[编程智能体]？", QuestionMode.NoSelect, null);
+                    // 转交给Coder
+                    if (confirm)
+                    {
+                        PlannerChatPanel.Controls.RemoveAt(PlannerChatPanel.Controls.Count - 1);
+                        chatUIService.SendUserMessage(AgentType.Developer, text);
+                        RunDeveloping(text);
+                    }
+                    // 继续使用Planner
+                    else
+                    {
+                        RunPlanning(text);
+                    }
+                }
             }
+        }
 
+        /// <summary>
+        /// 从Coder开始运行
+        /// </summary>
+        /// <param name="text"></param>
+        private async void RunDeveloping(string text)
+        {
+            await multiAgentOrchestrator.RunWorkflowAsync(text, WorkflowState.Developing);
+        }
+
+        /// <summary>
+        /// 从Planner开始运行
+        /// </summary>
+        /// <param name="text"></param>
+        private async void RunPlanning(string text)
+        {
+            isStart = true;
+            await multiAgentOrchestrator.RunWorkflowAsync(text, WorkflowState.Planning);
             RecoveryState();
             isStart = false;
             Trace.WriteLine("/////////// 已恢复初始状态 ///////////");
         }
 
+        /// <summary>
+        /// 恢复按钮状态
+        /// </summary>
         public void RecoveryState()
         {
             // 恢复 UI 状态
@@ -465,9 +527,9 @@ namespace SimpleAgent
 
         #endregion
 
-        private void toolStripMenuItem1_Click(object sender, EventArgs e)
+        private async void toolStripMenuItem1_Click(object sender, EventArgs e)
         {
-            chatUIService.ShowQuestion("测试问题", QuestionMode.NoSelect,
+            var (confirm, indices, options) = await chatUIService.ShowQuestion("测试问题", QuestionMode.NoSelect,
             [
                 "选项一",
                 "选项二",
@@ -475,11 +537,9 @@ namespace SimpleAgent
                 "选项四",
                 "选项五",
                 "选项六",
-            ], (ind, opt) =>
-            {
-                Trace.WriteLine(string.Join(',', ind));
-                Trace.WriteLine(string.Join(',', opt));
-            });
+            ]);
+            Trace.WriteLine(string.Join(',', indices));
+            Trace.WriteLine(string.Join(',', options));
         }
     }
 }

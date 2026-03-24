@@ -58,19 +58,21 @@ namespace SimpleAgent.Services
         /// <param name="question"></param>
         /// <param name="mode"></param>
         /// <param name="options"></param>
-        /// <param name="onConfirmClicked"></param>
-        /// <param name="onCancelClicked"></param>
-        public void ShowQuestion(string question, QuestionMode mode, List<string> options, Action<List<int>, List<string>>? onConfirmClicked = null, Action? onCancelClicked = null)
+        public async Task<(bool confirm, List<int>? indices, List<string>? options)> ShowQuestion(string question, QuestionMode mode, List<string>? options)
         {
+            var tcs = new TaskCompletionSource<(bool, List<int>?, List<string>?)>();
+
             questionDialog.SetQuestion(question, mode, options);
-            if (onConfirmClicked != null)
+            questionDialog.ConfirmClicked += (indices, selectedOptions) =>
             {
-                questionDialog.ConfirmClicked += onConfirmClicked;
-            }
-            if (onCancelClicked != null)
+                tcs.SetResult((true, indices, selectedOptions));
+            };
+            questionDialog.CancelClicked += () =>
             {
-                questionDialog.CancelClicked += onCancelClicked;
-            }
+                tcs.SetResult((false, null, null));
+            };
+
+            return await tcs.Task;
         }
 
         public void SendUserMessage(AgentType agentType, string message)
