@@ -52,6 +52,7 @@
             CoreLabel = new ToolStripStatusLabel();
             RefreshLabel = new ToolStripStatusLabel();
             PlannerChatPanel = new FlowLayoutPanel();
+            questionDialog1 = new SimpleAgent.UserControls.QuestionDialog();
             ContentContainer = new TableLayoutPanel();
             LeftPanel = new TableLayoutPanel();
             label6 = new Label();
@@ -176,6 +177,7 @@
             toolStripMenuItem1.Name = "toolStripMenuItem1";
             toolStripMenuItem1.Size = new Size(124, 22);
             toolStripMenuItem1.Text = "打开项目";
+            toolStripMenuItem1.Click += toolStripMenuItem1_Click;
             // 
             // toolStripSeparator1
             // 
@@ -329,6 +331,20 @@
             PlannerChatPanel.WrapContents = false;
             PlannerChatPanel.SizeChanged += PlannerChatPanel_SizeChanged;
             // 
+            // questionDialog1
+            // 
+            questionDialog1.AutoSize = true;
+            questionDialog1.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            questionDialog1.BackColor = Color.WhiteSmoke;
+            questionDialog1.Dock = DockStyle.Bottom;
+            questionDialog1.Location = new Point(0, 429);
+            questionDialog1.Margin = new Padding(0);
+            questionDialog1.MinimumSize = new Size(220, 0);
+            questionDialog1.Name = "questionDialog1";
+            questionDialog1.Size = new Size(676, 88);
+            questionDialog1.TabIndex = 0;
+            questionDialog1.Visible = false;
+            // 
             // ContentContainer
             // 
             ContentContainer.ColumnCount = 3;
@@ -451,6 +467,7 @@
             // ChatPanelContainer
             // 
             MiddlePanel.SetColumnSpan(ChatPanelContainer, 2);
+            ChatPanelContainer.Controls.Add(questionDialog1);
             ChatPanelContainer.Controls.Add(PlannerChatPanel);
             ChatPanelContainer.Controls.Add(CoderChatPanel);
             ChatPanelContainer.Controls.Add(ReviewerChatPanel);
@@ -983,6 +1000,7 @@
             MiddlePanel.ResumeLayout(false);
             MiddlePanel.PerformLayout();
             ChatPanelContainer.ResumeLayout(false);
+            ChatPanelContainer.PerformLayout();
             AgentTabPanel.ResumeLayout(false);
             RightPanel.ResumeLayout(false);
             RightPanel.PerformLayout();
@@ -1059,5 +1077,6 @@
 		public Label RAllTokens;
 		public Label RInTokens;
 		public Label ROutTokens;
-	}
+        private UserControls.QuestionDialog questionDialog1;
+    }
 }

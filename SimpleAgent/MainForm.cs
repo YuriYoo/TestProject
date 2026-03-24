@@ -449,5 +449,44 @@ namespace SimpleAgent
         }
 
         #endregion
+
+        private void toolStripMenuItem1_Click(object sender, EventArgs e)
+        {
+            var singleSelectOptions = new List<QuestionOption> 
+            { 
+                new("选项 A - 这是一个简短的选项"), 
+                new("选项 B - 这是一个中等长度的选项，包含了一些描述性文字"), 
+                new("选项 C - 这是一个非常长的选项，包含了大量的描述性文字。这个选项展示了控件如何处理大段文本的显示，它会自动调整高度以适应文本内容。") 
+            };
+
+            var singleDialog = questionDialog1;
+            singleDialog.SetQuestion(
+                "这是一个非常长的选项，包含了大量的描述性文字。这个选项展示了控件如何处理大段文本的显示，它会自动调整高度以适应文本内容。用户可以清楚地看到每个选项的详细信息，这对于需要详细说明的：",
+                QuestionMode.MultiSelect,
+                singleSelectOptions);
+
+            singleDialog.ConfirmClicked += (s, args) =>
+            {
+                var selectedOptions = singleDialog.GetSelectedOptions();
+                var selectedIndices = singleDialog.GetSelectedIndices();
+
+                Trace.WriteLine($"Indices{string.Join(',', selectedIndices)}");
+                Trace.WriteLine($"Options{string.Join(',', selectedOptions)}");
+            };
+
+            /*var form = new Form
+            {
+                Text = "问题对话框",
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                MinimizeBox = false,
+                MaximizeBox = false,
+                StartPosition = FormStartPosition.CenterParent,
+                Size = new Size(800, 200)
+            };*/
+
+            //singleDialog.Dock = DockStyle.Fill;
+            //form.Controls.Add(singleDialog);
+            //form.ShowDialog(this);
+        }
     }
 }

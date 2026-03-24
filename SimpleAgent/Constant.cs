@@ -48,5 +48,18 @@ namespace SimpleAgent
 		System,
 		User,
 		AI,
-	}
+    }
+	
+	/// <summary>
+	/// 问题类型
+	/// </summary>
+    public enum QuestionMode
+    {
+		/// <summary>无选项</summary>
+		NoSelect,
+		/// <summary>单选</summary>
+		SingleSelect,
+		/// <summary>多选</summary>
+		MultiSelect,
+    }
 }
