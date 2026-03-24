@@ -34,7 +34,6 @@ namespace SimpleAgent.Services
         private PlannerAgent _plannerAgent;
         private DeveloperAgent _developerAgent;
         private ReviewerAgent _reviewerAgent;
-        private RouterAgent _routerAgent;
 
         private TaskCompletionSource<string>? _userInputTcs;
 
@@ -85,18 +84,6 @@ namespace SimpleAgent.Services
                 _context.ReviewerFeedback = feedback;
                 _currentState = WorkflowState.Developing; // 打回重做
             });
-
-            _routerAgent = new(kernelService, workingDirectory, () =>
-            {
-                _plannerAgent.AddUserMessage(_context.OriginalRequest);
-                _currentState = WorkflowState.Planning;
-            },
-            () =>
-            {
-                // 直接用用户输入作为开发计划
-                _context.DetailedPlan = _context.OriginalRequest;
-                _currentState = WorkflowState.Developing;
-            });
         }
 
         /// <summary>
@@ -129,27 +116,17 @@ namespace SimpleAgent.Services
         /// </summary>
         /// <param name="userInput"></param>
         /// <returns></returns>
-        public async Task RunWorkflowAsync(string userInput)
+        public async Task RunWorkflowAsync(string userInput, WorkflowState startState)
         {
-            // 记录用户的原始请求
+            _currentState = startState;
             _context.OriginalRequest = userInput;
-
-            // 重置
             _context.DevCycleCount = 0;
-
-            // 收到消息，进入路由状态
-            _currentState = WorkflowState.Routing;
 
             while (_currentState != WorkflowState.Idle && _currentState != WorkflowState.Completed)
             {
                 logger.LogInformation("开始状态: {state}", _currentState);
                 switch (_currentState)
                 {
-                    // 路由判断
-                    case WorkflowState.Routing:
-                        await HandleRoutingAsync();
-                        break;
-
                     // 讨论规划
                     case WorkflowState.Planning:
                         await HandlePlanningAsync();
@@ -266,7 +243,7 @@ namespace SimpleAgent.Services
             catch (OperationCanceledException)
             {
                 // 捕获取消信息
-                logger.LogInformation($"已安全截断 {agentType} 的输出。");
+                logger.LogInformation("已安全截断 {Type} 的输出。", agentType);
             }
 
             // 流结束时，如果还有缓存的 CallId，说明该工具调用的参数已经全部接收完毕
@@ -283,38 +260,6 @@ namespace SimpleAgent.Services
         }
 
         /// <summary>
-        /// 处理路由判断
-        /// </summary>
-        /// <returns></returns>
-        private async Task HandleRoutingAsync()
-        {
-            logger.LogInformation("正在路由...");
-            _routerAgent.Reset();
-            _routerAgent.AddUserMessage($"用户输入: {_context.OriginalRequest}");
-
-            using var cts = new CancellationTokenSource();
-
-            try
-            {
-                StringBuilder sb = new();
-                await foreach (var chunk in _routerAgent.GetStreamingChatMessageContentsAsync(cts))
-                {
-                    sb.Append(chunk.Content);
-                    if (_currentState != WorkflowState.Routing)
-                    {
-                        // 触发取消，安全释放底层资源
-                        cts.Cancel();
-                    }
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                // 捕获取消信息
-                logger.LogInformation("已安全截断 Router 的输出。");
-            }
-        }
-
-        /// <summary>
         /// 处理需求规划
         /// </summary>
         /// <returns></returns>
@@ -322,6 +267,7 @@ namespace SimpleAgent.Services
         {
             logger.LogInformation("Planner 正在与您规划需求...");
 
+            _plannerAgent.AddUserMessage(_context.OriginalRequest);
             await ProcessAgentStreamAsync(_plannerAgent, AgentType.Planner, () => _currentState == WorkflowState.Planning);
 
             // 如果状态变了（因为模型调用了 FinalizePlan 触发了回调），循环会进入下一阶段
@@ -364,7 +310,17 @@ namespace SimpleAgent.Services
             // 首次发送的为执行计划, 后续的为 Reviewer 修改
             if (_context.DevCycleCount == 1)
             {
-                _developerAgent.AddUserMessage($"请根据以下计划开发：\n{_context.DetailedPlan}");
+                // 如果有计划
+                if (string.IsNullOrEmpty(_context.DetailedPlan))
+                {
+                    _developerAgent.AddUserMessage($"请根据以下计划开发：\n{_context.DetailedPlan}");
+                }
+                // 如果没有计划
+                else
+                {
+                    _context.DetailedPlan = _context.OriginalRequest;
+                    _developerAgent.AddUserMessage(_context.DetailedPlan);
+                }
             }
             else if (!string.IsNullOrEmpty(_context.ReviewerFeedback))
             {

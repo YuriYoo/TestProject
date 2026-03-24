@@ -1,6 +1,8 @@
-﻿using Microsoft.SemanticKernel;
+﻿using Microsoft.Agents.AI;
+using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
+using Serilog;
 using SimpleAgent.Models;
 using SimpleAgent.Plugins;
 using SimpleAgent.Services;
@@ -13,11 +15,11 @@ using System.Threading.Tasks;
 
 namespace SimpleAgent.Agents
 {
-	public class RouterAgent : BaseAgent
-	{
-		public const string AgentName = "Router";
-		public const string NickName = "路由智能体";
-		private const string SystemPrompt = @"
+    public class RouterAgent : BaseAgent
+    {
+        public const string AgentName = "Router";
+        public const string NickName = "路由智能体";
+        private const string SystemPrompt = @"
 # Role
 你是一个智能请求路由系统。
 
@@ -34,25 +36,84 @@ namespace SimpleAgent.Agents
 3. 你只需要调用工具，不要输出任何解释、不要与用户打招呼、不要与用户对话。
 4. 你必须调用以下两个函数之一，且只能调用一次： `route_to_planner` 或 `route_to_developer` ";
 
-		public RouterAgent(IKernelService kernelService, string workingDirectory, Action onRouteToPlanner, Action onRouteToDeveloper) : base(SystemPrompt)
-		{
-			kernel = kernelService.BuildKernel(workingDirectory);
-			kernel.Plugins.AddFromObject(new WorkflowPlugin { OnRouteToPlanner = onRouteToPlanner, OnRouteToDeveloper = onRouteToDeveloper }, "workflow");
+        private WorkflowState state = WorkflowState.Idle;
 
-			KernelFunction[] kernelFunctions = [
-				kernel.Plugins.GetFunction("workflow", "route_to_developer"),
-				kernel.Plugins.GetFunction("workflow", "route_to_planner"),
-			];
+        public RouterAgent(IKernelService kernelService, string workingDirectory) : base(SystemPrompt)
+        {
+            kernel = kernelService.BuildKernel(workingDirectory);
+            kernel.Plugins.AddFromObject(new WorkflowPlugin
+            {
+                OnRouteToPlanner = () =>
+                {
+                    state = WorkflowState.Planning;
+                },
+                OnRouteToDeveloper = () =>
+                {
+                    state = WorkflowState.Developing;
+                }
+            }, "workflow");
 
-			chatCompletionService = kernel.GetRequiredService<IChatCompletionService>();
-			settings = new OpenAIPromptExecutionSettings
-			{
-				FunctionChoiceBehavior = FunctionChoiceBehavior.Required(kernelFunctions),
-				Temperature = 0.2,
-				Seed = RouterSeed < 0 ? seed : RouterSeed,
-			};
+            KernelFunction[] kernelFunctions = [
+                kernel.Plugins.GetFunction("workflow", "route_to_developer"),
+                kernel.Plugins.GetFunction("workflow", "route_to_planner"),
+            ];
 
-			Trace.WriteLine($"Router初始化成功, Seed:{settings.Seed}  Temperature:{settings.Temperature}  TopP:{settings.TopP}");
-		}
-	}
+            chatCompletionService = kernel.GetRequiredService<IChatCompletionService>();
+            settings = new OpenAIPromptExecutionSettings
+            {
+                FunctionChoiceBehavior = FunctionChoiceBehavior.Required(kernelFunctions),
+                Temperature = 0.2,
+                Seed = RouterSeed < 0 ? seed : RouterSeed,
+            };
+
+            Trace.WriteLine($"Router初始化成功, Seed:{settings.Seed}  Temperature:{settings.Temperature}  TopP:{settings.TopP}");
+        }
+
+        /// <summary>
+        /// 处理路由判断
+        /// </summary>
+        /// <returns>是否需要规划</returns>
+        public async Task<bool> HandleRoutingAsync(string userInput)
+        {
+            Log.Information("正在路由...");
+            Reset();
+            AddUserMessage($"用户输入: {userInput}");
+
+            using var cts = new CancellationTokenSource();
+
+            try
+            {
+                StringBuilder sb = new();
+                state = WorkflowState.Routing;
+                await foreach (var chunk in GetStreamingChatMessageContentsAsync(cts))
+                {
+                    sb.Append(chunk.Content);
+                    if (state != WorkflowState.Routing)
+                    {
+                        // 触发取消，安全释放底层资源
+                        cts.Cancel();
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // 捕获取消信息
+                Log.Information("已安全截断 Router 的输出。");
+            }
+
+            if (state == WorkflowState.Developing)
+            {
+                return false;
+            }
+            else if (state == WorkflowState.Planning)
+            {
+                return true;
+            }
+            else
+            {
+                Log.Warning("Router 状态错误: {state}", state);
+            }
+            return false;
+        }
+    }
 }

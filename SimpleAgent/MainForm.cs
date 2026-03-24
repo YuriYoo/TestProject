@@ -4,6 +4,7 @@ using Microsoft.SemanticKernel.Agents;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 using OpenAI.Chat;
+using SimpleAgent.Agents;
 using SimpleAgent.Services;
 using SimpleAgent.UserControls;
 using SimpleAgent.Utility;
@@ -38,6 +39,7 @@ namespace SimpleAgent
         private readonly GPUStackClient stackClient;
         private readonly ChatUIService chatUIService;
 
+        private readonly RouterAgent routerAgent;
         private MultiAgentOrchestrator multiAgentOrchestrator;
 
         public MainForm(ILogger<MainForm> logger, ISettingsService settings, IKernelService kernelService, IBackgroundService backgroundService, MultiAgentOrchestrator multiAgentOrchestrator, GPUStackClient stackClient, ChatUIService chatUIService)
@@ -61,6 +63,9 @@ namespace SimpleAgent
             this.backgroundService = backgroundService;
             backgroundService.OnAddServer += (serviceId) => BackgroundServerListBox.Items.Add(serviceId);
             backgroundService.OnRemoveServer += BackgroundServerListBox.Items.Remove;
+
+            // 创建路由智能体
+            routerAgent = new(kernelService, settings.Current.WorkingDirectory);
 
             // 初始化
             InitializeAgentTab();
@@ -96,18 +101,28 @@ namespace SimpleAgent
             // 禁用按钮，防止 AI 回复期间重复点击
             SendButton.Enabled = false;
 
-            if (isStart)
+            // 判断是否需要进行规划
+            var plan = await routerAgent.HandleRoutingAsync(text);
+            if (plan)
             {
-                multiAgentOrchestrator.ProvideUserInput(text);
+                if (isStart)
+                {
+                    multiAgentOrchestrator.ProvideUserInput(text);
+                }
+                else
+                {
+                    isStart = true;
+                    await multiAgentOrchestrator.RunWorkflowAsync(text, WorkflowState.Planning);
+                }
             }
             else
             {
-                isStart = true;
-                await multiAgentOrchestrator.RunWorkflowAsync(text);
-                RecoveryState();
-                isStart = false;
-                Trace.WriteLine("/////////// 已恢复初始状态 ///////////");
+                await multiAgentOrchestrator.RunWorkflowAsync(text, WorkflowState.Developing);
             }
+
+            RecoveryState();
+            isStart = false;
+            Trace.WriteLine("/////////// 已恢复初始状态 ///////////");
         }
 
         public void RecoveryState()
