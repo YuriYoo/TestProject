@@ -93,7 +93,7 @@ namespace SimpleAgent.Plugins
 
             try
             {
-                await foreach (var chunk in agent.GetStreamingChatMessageContentsAsync())
+                await foreach (var chunk in agent.GetStreamingChatMessageContentsAsync(cts))
                 {
                     // 获取所有普通的消息文本内容
                     var textContents = chunk.Items.OfType<StreamingTextContent>();

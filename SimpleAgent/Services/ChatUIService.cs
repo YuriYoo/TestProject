@@ -202,7 +202,7 @@ namespace SimpleAgent.Services
             };
             if (agentType == AgentType.SubDeveloper)
             {
-                item.ChatName.Text = "子代理";
+                item.ChatName.Text = "智能体 (子代理)";
             }
 
             panel.Controls.Add(item);

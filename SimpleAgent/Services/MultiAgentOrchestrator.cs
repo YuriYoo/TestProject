@@ -178,7 +178,7 @@ namespace SimpleAgent.Services
             try
             {
                 var isSaveLog = false;
-                await foreach (var chunk in agent.GetStreamingChatMessageContentsAsync())
+                await foreach (var chunk in agent.GetStreamingChatMessageContentsAsync(cts))
                 {
                     // 获取所有普通的消息文本内容
                     var textContents = chunk.Items.OfType<StreamingTextContent>();
@@ -359,7 +359,7 @@ namespace SimpleAgent.Services
             else
             {
                 _developerAgent.AddUserMessage("继续");
-                _developerAgent.AddDeveloperMessage("如果你确定已经完成计划，也已经进行过测试且编译没有问题，请调用 `submit_for_review` 提交审查。如果没有完成任务请不要停止，继续完成你的工作。");
+                _developerAgent.AddDeveloperMessage("如果你确定已经完成计划，请调用 `submit_for_review` 提交审查。如果没有完成任务请不要停止，继续完成你的工作。");
             }
 
             // 直接调用通用方法
