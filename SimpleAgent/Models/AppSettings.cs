@@ -47,6 +47,9 @@ namespace SimpleAgent.Models
         /// <summary>最大开发轮次</summary>
         public int MaxDevCycle { get; set; } = 100;
 
+        /// <summary>子代理最大开发轮次</summary>
+        public int SubMaxDevCycle { get; set; } = 100;
+
         /// <summary>AI输出最大Token数</summary>
         public int MaxTokens { get; set; } = 128000;
 

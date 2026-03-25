@@ -113,62 +113,79 @@ namespace SimpleAgent.Services
                 return;
             }
 
+            // 子代理特殊处理
+            var chatType = agentType != AgentType.SubDeveloper ? agentType : AgentType.Developer;
+
             // 如果之前没有进行中的消息则创建新消息
-            if (inChat[agentType] == null)
+            if (inChat[chatType] == null)
             {
                 var item = CreateMessageItem(MessageType.AI, agentType, message);
-                inChat[agentType] = item;
+                inChat[chatType] = item;
 
                 // 更新标签页状态为正在运行, 并跳转
-                agentTabs[agentType].SetRunning(true);
-                agentTabs[agentType].PerformClick();
+                agentTabs[chatType].SetRunning(true);
+                agentTabs[chatType].PerformClick();
 
                 // 滚动到最底部
-                var panel = chatPanels[agentType];
-                panel.SuspendLayout();
+                var panel = chatPanels[chatType];
+                //panel.SuspendLayout();
                 panel.VerticalScroll.Value = panel.VerticalScroll.Maximum;
-                panel.ResumeLayout();
+                //panel.ResumeLayout();
             }
 
             // 如果已有进行中的消息则追加内容
             else
             {
-                AppendText(agentType, message);
+                AppendText(chatType, message);
             }
         }
 
         public int SendToolMessage(AgentType agentType, string message, int line = -1)
         {
+            if (message == "ENDSUB")
+            {
+                return -1;
+            }
             if (agentType == AgentType.Router)
             {
                 Trace.WriteLine("[警告] 路由智能体消息不需要显示");
                 return -1;
             }
 
+            var chatType = agentType != AgentType.SubDeveloper ? agentType : AgentType.Developer;
+
             // 如果之前没有进行中的消息则创建新消息
-            if (inChat[agentType] == null)
+            if (inChat[chatType] == null)
             {
                 var item = CreateMessageItem(MessageType.AI, agentType, message);
-                inChat[agentType] = item;
+                inChat[chatType] = item;
 
                 // 更新标签页状态为正在运行, 并跳转
-                agentTabs[agentType].SetRunning(true);
-                agentTabs[agentType].PerformClick();
+                agentTabs[chatType].SetRunning(true);
+                agentTabs[chatType].PerformClick();
             }
 
             if (line < 0)
             {
-                var textBox = inChat[agentType].ChatMessage;
-                AppendText(agentType, $"[正在调用 {message} 工具] ... ", true, Color.DeepSkyBlue);
-                int outLine = textBox.GetLineFromCharIndex(textBox.TextLength);
-                AppendNewLine(textBox);
-                return outLine;
+                var textBox = inChat[chatType].ChatMessage;
+                if (message != "SUB")
+                {
+                    AppendText(chatType, $"[正在调用 {message} 工具] ... ", true, Color.DeepSkyBlue);
+                    int outLine = textBox.GetLineFromCharIndex(textBox.TextLength);
+                    AppendNewLine(textBox);
+                    return outLine;
+                }
+
+                AppendText(chatType, $"[ 创建子代理执行任务 ]", true, Color.ForestGreen);
             }
             else
             {
-                ReplaceLine(agentType, line, $"{message}", Color.ForestGreen);
-                return line;
+                if (message != "SUB")
+                {
+                    ReplaceLine(chatType, line, $"{message}", Color.ForestGreen);
+                }
             }
+            return line;
         }
 
         /// <summary>
@@ -180,7 +197,9 @@ namespace SimpleAgent.Services
         /// <returns></returns>
         private ChatMessageItem CreateMessageItem(MessageType messageType, AgentType agentType, string message = "")
         {
-            var panel = chatPanels[agentType];
+            var chatType = agentType != AgentType.SubDeveloper ? agentType : AgentType.Developer;
+
+            var panel = chatPanels[chatType];
             if (messageType == MessageType.AI && string.IsNullOrWhiteSpace(message))
             {
                 message = "思考中...";
@@ -189,6 +208,10 @@ namespace SimpleAgent.Services
             {
                 Width = panel.ClientSize.Width,
             };
+            if (agentType == AgentType.SubDeveloper)
+            {
+                item.ChatName.Text = "子代理";
+            }
 
             panel.Controls.Add(item);
             panel.ScrollControlIntoView(item);

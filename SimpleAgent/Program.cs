@@ -71,6 +71,7 @@ namespace SimpleAgent
             services.AddTransient<FileSystemPlugin>();
             services.AddTransient<WorkflowPlugin>();
             services.AddTransient<HttpTestPlugin>();
+            services.AddTransient<SubAgentPlugin>();
 
             // 上下文裁剪
             services.AddTransient<IChatHistoryReducer, CustomChatHistoryReducer>();

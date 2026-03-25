@@ -300,7 +300,7 @@ namespace SimpleAgent.Services
                 string userFeedback = await _userInputTcs.Task;
 
                 // 用户输入后，代码从这里恢复执行，将用户的回复加入 Planner 的上下文
-                _plannerAgent.AddUserMessage(userFeedback);
+                _context.OriginalRequest = userFeedback;
 
                 // 循环结束，外层的 while 会再次进入 HandlePlanningAsync，让 Planner 根据用户反馈继续对话
             }

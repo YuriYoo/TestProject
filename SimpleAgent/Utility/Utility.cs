@@ -233,6 +233,10 @@ namespace SimpleAgent.Utility
                     }
                     break;
 
+                case "sub_agent-delegate_sub_task":
+                    outstr = line < 0 ? "SUB" : "ENDSUB";
+                    break;
+
                 default:
                     if (name != null && name.StartsWith("workflow-"))
                     {

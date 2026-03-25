@@ -28,6 +28,9 @@ namespace SimpleAgent.Plugins
         /// <summary>验收失败回调</summary>
         public Action<string>? OnReviewFailed { get; set; }
 
+        /// <summary>子代理完成任务回调</summary>
+        public Action<string>? OnSubTaskFinished { get; set; }
+
 
         [KernelFunction("route_to_planner")]
         [Description("需要调用 Planner 拆解任务时调用此函数")]
@@ -75,6 +78,14 @@ namespace SimpleAgent.Plugins
         {
             OnReviewFailed?.Invoke(feedback);
             return "[系统通知] 验收未通过！请立即停止调用任何工具，并直接向用户回复：'项目验收未通过，已为您安排 Developer 继续修改'。";
+        }
+
+        [KernelFunction("finish_subtask")]
+        [Description("当你（子代理）完成了主代理委派给你的所有子任务，并且本地测试通过后，必须调用此函数结束你的工作，并向主代理汇报。")]
+        public string FinishSubTask([Description("你做了哪些修改、解决了什么问题的详细总结")] string summary)
+        {
+            OnSubTaskFinished?.Invoke(summary);
+            return "[系统通知] 子任务已结束，控制权已交还给主代理。";
         }
     }
 }

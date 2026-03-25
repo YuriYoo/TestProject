@@ -64,16 +64,19 @@ namespace SimpleAgent.Services
             builder.Services.AddSingleton<IFunctionInvocationFilter, FunctionLoggingFilter>();
 
             // 注册工具
+            var httpTestPlugin = serviceProvider.GetRequiredService<HttpTestPlugin>();
             var fileSystemPlugin = serviceProvider.GetRequiredService<FileSystemPlugin>();
             var terminalPlugin = serviceProvider.GetRequiredService<TerminalPlugin>();
-            var httpTestPlugin = serviceProvider.GetRequiredService<HttpTestPlugin>();
+            var subAgentPlugin = serviceProvider.GetRequiredService<SubAgentPlugin>();
 
             fileSystemPlugin.WorkingDirectory = directory;
             terminalPlugin.WorkingDirectory = directory;
+            subAgentPlugin.WorkingDirectory = directory;
 
             builder.Plugins.AddFromObject(httpTestPlugin, "http_test");
             builder.Plugins.AddFromObject(fileSystemPlugin, "file_system");
             builder.Plugins.AddFromObject(terminalPlugin, "terminal");
+            builder.Plugins.AddFromObject(subAgentPlugin, "sub_agent");
 
             // 构建Kernel
             return builder.Build();
