@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.SemanticKernel.ChatCompletion;
 using OpenTelemetry;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Logs;
@@ -9,6 +10,7 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Serilog;
 using SimpleAgent.Plugins;
+using SimpleAgent.Reducer;
 using SimpleAgent.Services;
 using static System.Windows.Forms.DataFormats;
 
@@ -69,6 +71,9 @@ namespace SimpleAgent
             services.AddTransient<FileSystemPlugin>();
             services.AddTransient<WorkflowPlugin>();
             services.AddTransient<HttpTestPlugin>();
+
+            // 上下文裁剪
+            services.AddTransient<IChatHistoryReducer, CustomChatHistoryReducer>();
 
             // 构建服务提供者
             ServiceProvider = services.BuildServiceProvider();

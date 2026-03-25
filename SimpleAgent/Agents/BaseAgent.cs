@@ -22,15 +22,15 @@ namespace SimpleAgent.Agents
 
 		protected int seed = Random.Shared.Next();
 
-		//protected const int PlannerSeed = -1;
-		//protected const int DeveloperSeed = -1;
-		//protected const int ReviewerSeed = -1;
-		//protected const int RouterSeed = -1;
+		protected const int PlannerSeed = -1;
+		protected const int DeveloperSeed = -1;
+		protected const int ReviewerSeed = -1;
+		protected const int RouterSeed = -1;
 
-		protected const int PlannerSeed = 1560201831;
-		protected const int DeveloperSeed = 666262285;
-		protected const int ReviewerSeed = 400363365;
-		protected const int RouterSeed = 189011865;
+		//protected const int PlannerSeed = 1560201831;
+		//protected const int DeveloperSeed = 666262285;
+		//protected const int ReviewerSeed = 400363365;
+		//protected const int RouterSeed = 189011865;
 
 		private readonly string systemPrompt;
 

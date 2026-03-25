@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.AI;
+﻿using Microsoft.Agents.AI;
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
@@ -26,6 +28,7 @@ namespace SimpleAgent.Services
     public class MultiAgentOrchestrator
     {
         private readonly ILogger<MultiAgentOrchestrator> logger;
+        private readonly IServiceProvider serviceProvider;
         private readonly ISettingsService settings;
         private readonly IKernelService kernelService;
         private readonly ChatUIService chatUIService;
@@ -48,9 +51,10 @@ namespace SimpleAgent.Services
         /// <summary>重置用户输入状态事件</summary>
         public event Action OnResetUserInputState;
 
-        public MultiAgentOrchestrator(ILogger<MultiAgentOrchestrator> logger, ISettingsService settings, IKernelService kernelService, ChatUIService chatUIService)
+        public MultiAgentOrchestrator(ILogger<MultiAgentOrchestrator> logger, IServiceProvider serviceProvider, ISettingsService settings, IKernelService kernelService, ChatUIService chatUIService)
         {
             this.logger = logger;
+            this.serviceProvider = serviceProvider;
             this.settings = settings;
             this.kernelService = kernelService;
             this.chatUIService = chatUIService;
@@ -121,6 +125,8 @@ namespace SimpleAgent.Services
         {
             _currentState = startState;
             _context.OriginalRequest = userInput;
+            _context.DeveloperSummary = string.Empty;
+            _context.ReviewerFeedback = string.Empty;
             _context.DevCycleCount = 0;
 
             while (_currentState != WorkflowState.Idle && _currentState != WorkflowState.Completed)
@@ -136,11 +142,6 @@ namespace SimpleAgent.Services
                     // 开发测试
                     case WorkflowState.Developing:
                         await HandleDevelopingAsync();
-
-                        var kernel = kernelService.BuildKernel(workingDirectory);
-                        var chatService = kernel.GetRequiredService<IChatCompletionService>();
-                        var myReducer = new CustomChatHistoryReducer(chatService);
-                        await _developerAgent.chatHistory.ReduceInPlaceAsync(myReducer, CancellationToken.None);
                         break;
 
                     // 验收修改
@@ -151,6 +152,8 @@ namespace SimpleAgent.Services
                 logger.LogInformation("结束状态: {state}", _currentState);
             }
 
+            _context.IsImprove = true;
+            _context.IsChangePlan = false;
             logger.LogInformation("本轮任务已全部处理完毕，等待下一次用户输入。");
         }
 
@@ -273,6 +276,11 @@ namespace SimpleAgent.Services
             {
                 _plannerAgent.AddUserMessage(_context.OriginalRequest);
             }
+            else if (_context.IsImprove)
+            {
+                _context.IsChangePlan = true;
+                _plannerAgent.AddUserMessage(_context.OriginalRequest);
+            }
 
             await ProcessAgentStreamAsync(_plannerAgent, AgentType.Planner, () => _currentState == WorkflowState.Planning);
 
@@ -308,21 +316,36 @@ namespace SimpleAgent.Services
             logger.LogInformation("Developer 正在编写和测试代码...");
             _context.DevCycleCount++;
 
-            if (_context.DevCycleCount > 500)
+            if (_context.DevCycleCount > settings.Current.MaxDevCycle)
             {
+                logger.LogInformation("已超过最大开发轮次，强制中止！");
                 throw new Exception("开发-测试循环次数超限，强制中止！");
             }
 
             // 首次发送的为执行计划, 后续的为 Reviewer 修改
             if (_context.DevCycleCount == 1)
             {
-                // 如果没有计划
+                // 如果没有计划(用户直接向Coder发起请求)
                 if (string.IsNullOrEmpty(_context.DetailedPlan))
                 {
                     _context.DetailedPlan = _context.OriginalRequest;
                     _developerAgent.AddUserMessage(_context.DetailedPlan);
                 }
-                // 如果有计划
+                // 如果有计划, 且已经是完善阶段了
+                else if (_context.IsImprove)
+                {
+                    // 如果计划变更了
+                    if (_context.IsChangePlan)
+                    {
+                        _developerAgent.AddUserMessage($"请根据以下计划开发：\n{_context.DetailedPlan}");
+                    }
+                    // 如果计划没变, 说明用户直接向Coder提出意见
+                    else
+                    {
+                        _developerAgent.AddUserMessage(_context.OriginalRequest);
+                    }
+                }
+                // 如果有计划, 且还没到完善阶段
                 else
                 {
                     _developerAgent.AddUserMessage($"请根据以下计划开发：\n{_context.DetailedPlan}");
@@ -341,6 +364,11 @@ namespace SimpleAgent.Services
 
             // 直接调用通用方法
             await ProcessAgentStreamAsync(_developerAgent, AgentType.Developer, () => _currentState == WorkflowState.Developing);
+
+            // 上下文压缩
+            // TODO: 将上下文数量写入到AgentContext中, 直接在此处先判断是否超过压缩阈值
+            var myReducer = serviceProvider.GetRequiredService<IChatHistoryReducer>();
+            await _developerAgent.chatHistory.ReduceInPlaceAsync(myReducer, CancellationToken.None);
         }
 
         /// <summary>
@@ -350,7 +378,14 @@ namespace SimpleAgent.Services
         private async Task HandleReviewingAsync()
         {
             logger.LogInformation("Reviewer 正在验收...");
-            _reviewerAgent.AddUserMessage($"【以下为原计划】\n\n{_context.DetailedPlan}\n\n\n\n【以下为开发者提交的摘要】\n\n{_context.DeveloperSummary}");
+            if (!_context.IsImprove || _context.IsChangePlan)
+            {
+                _reviewerAgent.AddUserMessage($"【以下为原计划】\n{_context.DetailedPlan}\n\n【以下为开发者提交的摘要】\n{_context.DeveloperSummary}");
+            }
+            else
+            {
+                _reviewerAgent.AddUserMessage($"【以下为原始需求】\n{_context.OriginalRequest}\n\n【以下为开发者提交的摘要】\n{_context.DeveloperSummary}");
+            }
 
             await ProcessAgentStreamAsync(_reviewerAgent, AgentType.Reviewer, () => _currentState == WorkflowState.Reviewing);
         }

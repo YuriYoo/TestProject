@@ -23,6 +23,12 @@ namespace SimpleAgent.Models
         /// <summary>记录 开发-反馈 循环次数，防止死循环</summary>
         public int DevCycleCount { get; set; } = 0;
 
+        /// <summary>是否是完善阶段(首次请求执行计划时为false, 后续为true)</summary>
+        public bool IsImprove { get; set; } = false;
+
+        /// <summary>后续流程中是否变更了计划</summary>
+        public bool IsChangePlan { get; set; } = false;
+
         /// <summary>当前的状态</summary>
         public WorkflowState CurrentState { get; set; } = WorkflowState.Idle;
     }

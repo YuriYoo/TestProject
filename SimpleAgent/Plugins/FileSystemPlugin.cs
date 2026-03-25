@@ -183,10 +183,11 @@ namespace SimpleAgent.Plugins
                 string fullPath = ResolvePath(filePath);
                 if (!File.Exists(fullPath)) return "[错误] 传入的文件路径不存在";
 
-                string fileContent = await File.ReadAllTextAsync(filePath);
+                string fileContent = await File.ReadAllTextAsync(fullPath);
 
                 // 尝试精确匹配
-                int matchCount = Regex.Matches(Regex.Escape(fileContent), Regex.Escape(searchBlock)).Count;
+                //int matchCount = Regex.Matches(Regex.Escape(fileContent), Regex.Escape(searchBlock)).Count;
+                int matchCount = Regex.Matches(fileContent, Regex.Escape(searchBlock)).Count;
 
                 // 如果精确匹配失败，尝试统一换行符后再次匹配 (解决大模型输出 \n 但文件是 \r\n 的常见问题)
                 if (matchCount == 0)
@@ -221,9 +222,9 @@ namespace SimpleAgent.Plugins
                 {
                     // 找到唯一的匹配项，执行替换
                     string updatedContent = fileContent.Replace(searchBlock, replaceBlock);
-                    await File.WriteAllTextAsync(filePath, updatedContent);
+                    await File.WriteAllTextAsync(fullPath, updatedContent);
 
-                    return $"[成功] 成功修改了文件: {filePath}";
+                    return $"[成功] 成功修改了文件: {fullPath}";
                 }
             }
             catch (Exception ex)

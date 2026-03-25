@@ -66,7 +66,7 @@ namespace SimpleAgent.Agents
                 Seed = RouterSeed < 0 ? seed : RouterSeed,
             };
 
-            Trace.WriteLine($"Router初始化成功, Seed:{settings.Seed}  Temperature:{settings.Temperature}  TopP:{settings.TopP}");
+            Log.Logger.Information("Router初始化成功, Seed:{Seed}  Temperature:{Temperature}", settings.Seed, settings.Temperature);
         }
 
         /// <summary>

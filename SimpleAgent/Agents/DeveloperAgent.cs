@@ -2,6 +2,7 @@
 using Microsoft.SemanticKernel.Agents;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
+using Serilog;
 using SimpleAgent.Models;
 using SimpleAgent.Plugins;
 using SimpleAgent.Services;
@@ -69,7 +70,7 @@ namespace SimpleAgent.Agents
                 Seed = DeveloperSeed < 0 ? seed : DeveloperSeed,
             };
 
-            Trace.WriteLine($"Developer初始化成功, Seed:{settings.Seed}  Temperature:{settings.Temperature}  TopP:{settings.TopP}");
+            Log.Logger.Information("Developer初始化成功, Seed:{Seed}  Temperature:{Temperature}", settings.Seed, settings.Temperature);
         }
     }
 }

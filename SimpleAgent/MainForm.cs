@@ -117,43 +117,59 @@ namespace SimpleAgent
             }
             else
             {
-                var (confirm, indices, options) = await chatUIService.ShowQuestion("仅可以与 [规划智能体] 或 [编程智能体] 进行对话，请根据需要进行切换。", QuestionMode.NoSelect, null);
+                _ = await chatUIService.ShowQuestion("仅可以与 [规划智能体] 或 [编程智能体] 进行对话，请根据需要进行切换。", QuestionMode.NoSelect, null);
             }
 
             // 判断是否需要进行规划
             var plan = await routerAgent.HandleRoutingAsync(text);
+
+            // 需要进行规划
             if (plan)
             {
-                if (!PlannerAgentTab.IsSelected)
+                // 当前在规划页面
+                if (PlannerAgentTab.IsSelected)
+                {
+                    RunPlanning(text);
+                }
+                // 当前不在规划页面
+                else
                 {
                     var (confirm, indices, options) = await chatUIService.ShowQuestion("对于该需求，模型建议先进行规划再开发，是否确认转交给[规划智能体]？", QuestionMode.NoSelect, null);
-                    // 转交给Planner
+                    // 确认转交给 Planner
                     if (confirm)
                     {
                         CoderChatPanel.Controls.RemoveAt(CoderChatPanel.Controls.Count - 1);
                         chatUIService.SendUserMessage(AgentType.Planner, text);
                         RunPlanning(text);
                     }
-                    // 继续使用
+                    // 不转交, 继续使用Coder
                     else
                     {
                         RunDeveloping(text);
                     }
                 }
             }
+
+            // 直接进行开发
             else
             {
-                if (!CoderAgentTab.IsSelected)
+                // 当前在开发页面
+                if (CoderAgentTab.IsSelected)
+                {
+                    RunDeveloping(text);
+                }
+                // 当前不在开发页面
+                else
                 {
                     var (confirm, indices, options) = await chatUIService.ShowQuestion("对于该需求，模型建议可以直接开发，是否确认转交给[编程智能体]？", QuestionMode.NoSelect, null);
-                    // 转交给Coder
+                    // 确认转交给 Coder
                     if (confirm)
                     {
                         PlannerChatPanel.Controls.RemoveAt(PlannerChatPanel.Controls.Count - 1);
                         chatUIService.SendUserMessage(AgentType.Developer, text);
                         RunDeveloping(text);
                     }
-                    // 继续使用Planner
+                    // 不转交, 继续使用Planner
                     else
                     {
                         RunPlanning(text);
