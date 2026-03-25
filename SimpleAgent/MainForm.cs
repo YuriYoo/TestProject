@@ -185,6 +185,8 @@ namespace SimpleAgent
         private async void RunDeveloping(string text)
         {
             await multiAgentOrchestrator.RunWorkflowAsync(text, WorkflowState.Developing);
+            RecoveryState();
+            Trace.WriteLine("/////////// 已恢复初始状态2 ///////////");
         }
 
         /// <summary>

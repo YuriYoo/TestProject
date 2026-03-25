@@ -5,6 +5,7 @@ using SimpleAgent.Agents;
 using SimpleAgent.Services;
 using SimpleAgent.Utility;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Text;
 
 namespace SimpleAgent.Plugins
@@ -28,7 +29,7 @@ namespace SimpleAgent.Plugins
         }
 
         [KernelFunction("delegate_sub_task")]
-        [Description("当你面临复杂的重构、或需要开发一个独立的模块时，使用此工具唤醒一个子代理去专门完成该部分工作。这能让你保持清晰的全局视野。")]
+        [Description("当你需要执行开发一个功能或修复一个Bug等类似任务时，使用此工具唤醒一个子代理去专门完成该部分工作。这能让你保持清晰的全局视野。")]
         public async Task<string> DelegateSubTaskAsync(
             [Description("详细的子任务说明（告诉子代理它需要做什么、重点修改哪些文件、如何测试）")] string taskDescription)
         {
@@ -51,7 +52,6 @@ namespace SimpleAgent.Plugins
             while (!isFinished && safetyCounter < settingsService.Current.SubMaxDevCycle)
             {
                 safetyCounter++;
-
                 await ProcessAgentStreamAsync(subAgent, () => { return !isFinished; });
 
                 // 如果子代理结束了还没完成任务
@@ -131,10 +131,6 @@ namespace SimpleAgent.Plugins
                         }
                         break;
                     }
-
-                    // 尝试从当前 chunk 提取 Token 消耗
-                    //var usage = ExtractTokenUsage(chunk.Metadata);
-                    //OnTokenUsageUpdated?.Invoke(agentType, usage);
 
                     // 通过委托判断是否需要因为状态改变而中断流
                     if (!keepRunningCondition())

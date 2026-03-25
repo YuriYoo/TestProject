@@ -142,14 +142,14 @@ namespace SimpleAgent.Services
 
         public int SendToolMessage(AgentType agentType, string message, int line = -1)
         {
-            if (message == "ENDSUB")
+            if (string.IsNullOrEmpty(message))
             {
-                return -1;
+                return line;
             }
             if (agentType == AgentType.Router)
             {
                 Trace.WriteLine("[警告] 路由智能体消息不需要显示");
-                return -1;
+                return line;
             }
 
             var chatType = agentType != AgentType.SubDeveloper ? agentType : AgentType.Developer;
@@ -168,24 +168,16 @@ namespace SimpleAgent.Services
             if (line < 0)
             {
                 var textBox = inChat[chatType].ChatMessage;
-                if (message != "SUB")
-                {
-                    AppendText(chatType, $"[正在调用 {message} 工具] ... ", true, Color.DeepSkyBlue);
-                    int outLine = textBox.GetLineFromCharIndex(textBox.TextLength);
-                    AppendNewLine(textBox);
-                    return outLine;
-                }
-
-                AppendText(chatType, $"[ 创建子代理执行任务 ]", true, Color.ForestGreen);
+                AppendText(chatType, $"[正在调用 {message} 工具] ... ", true, Color.DeepSkyBlue);
+                int outLine = textBox.GetLineFromCharIndex(textBox.TextLength);
+                AppendNewLine(textBox);
+                return outLine;
             }
             else
             {
-                if (message != "SUB")
-                {
-                    ReplaceLine(chatType, line, $"{message}", Color.ForestGreen);
-                }
+                ReplaceLine(chatType, line, $"{message}", Color.ForestGreen);
+                return line;
             }
-            return line;
         }
 
         /// <summary>
@@ -220,6 +212,10 @@ namespace SimpleAgent.Services
 
         private void EndChat(AgentType agentType)
         {
+            if (agentType == AgentType.SubDeveloper)
+            {
+                agentType = AgentType.Developer;
+            }
             inChat[agentType] = null;
             agentTabs[agentType].SetRunning(false);
         }
