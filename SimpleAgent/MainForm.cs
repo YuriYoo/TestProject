@@ -1,3 +1,4 @@
+using Microsoft.Agents.AI;
 using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Agents;
@@ -5,12 +6,15 @@ using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 using OpenAI.Chat;
 using SimpleAgent.Agents;
+using SimpleAgent.Factory;
+using SimpleAgent.Models;
 using SimpleAgent.Services;
 using SimpleAgent.UserControls;
 using SimpleAgent.Utility;
 using System.Diagnostics;
 using System.Text;
 using System.Threading.Tasks;
+using static System.Windows.Forms.AxHost;
 
 namespace SimpleAgent
 {
@@ -34,26 +38,37 @@ namespace SimpleAgent
         private readonly ILogger<MainForm> logger;
         private readonly ISettingsService settings;
         private readonly IBackgroundService backgroundService;
+        private readonly AgentContextRepository contextRepository;
         private readonly IKernelService kernelService;
         private readonly GPUStackClient stackClient;
         private readonly ChatUIService chatUIService;
 
-        private readonly RouterAgent routerAgent;
+        private readonly IAgentFactory agentFactory;
+        private readonly IOrchestratorFactory orchestratorFactory;
+
+        private RouterAgent routerAgent;
         private MultiAgentOrchestrator multiAgentOrchestrator;
+        private AgentContext currentContext;
 
         /// <summary>是否正在运行中</summary>
         private bool _isProcessing = false;
 
-        public MainForm(ILogger<MainForm> logger, ISettingsService settings, IKernelService kernelService, IBackgroundService backgroundService, MultiAgentOrchestrator multiAgentOrchestrator, GPUStackClient stackClient, ChatUIService chatUIService)
+        public MainForm(ILogger<MainForm> logger,
+            IOrchestratorFactory orchestratorFactory,
+            AgentContextRepository contextRepository,
+            ISettingsService settings,
+            IKernelService kernelService,
+            IBackgroundService backgroundService,
+            IAgentFactory agentFactory,
+            GPUStackClient stackClient,
+            ChatUIService chatUIService)
         {
             this.logger = logger;
             this.settings = settings;
             this.kernelService = kernelService;
-
-            this.multiAgentOrchestrator = multiAgentOrchestrator;
-            multiAgentOrchestrator.Initialization(settings.Current.WorkingDirectory);
-            multiAgentOrchestrator.OnTokenUsageUpdated += UpdateTokens;
-            multiAgentOrchestrator.OnResetUserInputState += ActivationSendButton;
+            this.agentFactory = agentFactory;
+            this.contextRepository = contextRepository;
+            this.orchestratorFactory = orchestratorFactory;
 
             InitializeComponent();
 
@@ -65,9 +80,6 @@ namespace SimpleAgent
             this.backgroundService = backgroundService;
             backgroundService.OnAddServer += (serviceId) => BackgroundServerListBox.Items.Add(serviceId);
             backgroundService.OnRemoveServer += BackgroundServerListBox.Items.Remove;
-
-            // 创建路由智能体
-            routerAgent = new(kernelService, settings.Current.WorkingDirectory);
 
             // 初始化
             InitializeAgentTab();
@@ -87,6 +99,28 @@ namespace SimpleAgent
             };
 
             SendButton.Click += SendButton_Click;
+
+            // 模拟新建会话
+            CreateConversation();
+        }
+
+        /// <summary>
+        /// 创建会话
+        /// </summary>
+        private async Task CreateConversation()
+        {
+            var guid = Guid.NewGuid();
+            currentContext = await contextRepository.GetOrCreateContextAsync(guid);
+
+            if (multiAgentOrchestrator != null)
+            {
+                multiAgentOrchestrator.OnResetUserInputState -= ActivationSendButton;
+            }
+            multiAgentOrchestrator = orchestratorFactory.CreateOrchestrator(currentContext);
+            multiAgentOrchestrator.OnResetUserInputState += ActivationSendButton;
+
+            routerAgent = agentFactory.CreateAgent<RouterAgent>(currentContext);
+
         }
 
         bool isStart = false;
@@ -131,61 +165,73 @@ namespace SimpleAgent
             }
 
             // 判断是否需要进行规划
-            var plan = await routerAgent.HandleRoutingAsync(text);
+            var cts = new CancellationTokenSource();
+            routerAgent.Reset();
 
-            // 需要进行规划
-            if (plan)
+            WorkflowState state;
+            do
             {
-                // 当前在规划页面
-                if (PlannerAgentTab.IsSelected)
-                {
-                    RunPlanning(text);
-                }
-                // 当前不在规划页面
-                else
-                {
-                    var (confirm, indices, options) = await chatUIService.ShowQuestion("对于该需求，模型建议先进行规划再开发，是否确认转交给[规划智能体]？", QuestionMode.NoSelect, null);
-                    // 确认转交给 Planner
-                    if (confirm)
-                    {
-                        CoderChatPanel.Controls.RemoveAt(CoderChatPanel.Controls.Count - 1);
-                        chatUIService.SendUserMessage(AgentType.Planner, text);
-                        RunPlanning(text);
-                    }
-                    // 不转交, 继续使用Coder
-                    else
-                    {
-                        RunDeveloping(text);
-                    }
-                }
-            }
+                state = await routerAgent.ExecuteAsync(currentContext, cts.Token);
 
-            // 直接进行开发
-            else
-            {
-                // 当前在开发页面
-                if (CoderAgentTab.IsSelected)
+                // 需要进行规划
+                if (state == WorkflowState.Planning)
                 {
-                    RunDeveloping(text);
-                }
-                // 当前不在开发页面
-                else
-                {
-                    var (confirm, indices, options) = await chatUIService.ShowQuestion("对于该需求，模型建议可以直接开发，是否确认转交给[编程智能体]？", QuestionMode.NoSelect, null);
-                    // 确认转交给 Coder
-                    if (confirm)
-                    {
-                        PlannerChatPanel.Controls.RemoveAt(PlannerChatPanel.Controls.Count - 1);
-                        chatUIService.SendUserMessage(AgentType.Developer, text);
-                        RunDeveloping(text);
-                    }
-                    // 不转交, 继续使用Planner
-                    else
+                    // 当前在规划页面
+                    if (PlannerAgentTab.IsSelected)
                     {
                         RunPlanning(text);
                     }
+                    // 当前不在规划页面
+                    else
+                    {
+                        var (confirm, indices, options) = await chatUIService.ShowQuestion("对于该需求，模型建议先进行规划再开发，是否确认转交给[规划智能体]？", QuestionMode.NoSelect, null);
+                        // 确认转交给 Planner
+                        if (confirm)
+                        {
+                            CoderChatPanel.Controls.RemoveAt(CoderChatPanel.Controls.Count - 1);
+                            chatUIService.SendUserMessage(AgentType.Planner, text);
+                            RunPlanning(text);
+                        }
+                        // 不转交, 继续使用Coder
+                        else
+                        {
+                            RunDeveloping(text);
+                        }
+                    }
+                }
+
+                // 直接进行开发
+                else if (state == WorkflowState.Developing)
+                {
+                    // 当前在开发页面
+                    if (CoderAgentTab.IsSelected)
+                    {
+                        RunDeveloping(text);
+                    }
+                    // 当前不在开发页面
+                    else
+                    {
+                        var (confirm, indices, options) = await chatUIService.ShowQuestion("对于该需求，模型建议可以直接开发，是否确认转交给[编程智能体]？", QuestionMode.NoSelect, null);
+                        // 确认转交给 Coder
+                        if (confirm)
+                        {
+                            PlannerChatPanel.Controls.RemoveAt(PlannerChatPanel.Controls.Count - 1);
+                            chatUIService.SendUserMessage(AgentType.Developer, text);
+                            RunDeveloping(text);
+                        }
+                        // 不转交, 继续使用Planner
+                        else
+                        {
+                            RunPlanning(text);
+                        }
+                    }
+                }
+                else
+                {
+                    logger.LogError("理论上不可能走到这里");
                 }
             }
+            while (state == WorkflowState.Routing);
         }
 
         /// <summary>

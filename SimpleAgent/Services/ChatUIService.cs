@@ -105,6 +105,18 @@ namespace SimpleAgent.Services
             }
         }
 
+        public void SendCompletedMessage(AgentType agentType)
+        {
+            if (agentType == AgentType.Router)
+            {
+                Trace.WriteLine("[警告] 路由智能体消息不需要显示");
+                return;
+            }
+
+            // 强制结束AI的消息流
+            EndChat(agentType);
+        }
+
         public void SendAIMessage(AgentType agentType, string message)
         {
             if (agentType == AgentType.Router)

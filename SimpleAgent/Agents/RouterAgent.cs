@@ -15,9 +15,10 @@ using System.Threading.Tasks;
 
 namespace SimpleAgent.Agents
 {
-    public class RouterAgent : BaseAgent
+    public class RouterAgent : BaseAgent, IWorkflowAgent
     {
-        public const string AgentName = "Router";
+        public AgentType Type => AgentType.Router;
+        private readonly IStreamingExecutionEngine _executionEngine;
         public const string NickName = "路由智能体";
         private const string SystemPrompt = @"
 # Role
@@ -36,23 +37,11 @@ namespace SimpleAgent.Agents
 3. 你只需要调用工具，不要输出任何解释、不要与用户打招呼、不要与用户对话。
 4. 你必须调用以下两个函数之一，且只能调用一次： `route_to_planner` 或 `route_to_developer` ";
 
-        private WorkflowState state = WorkflowState.Idle;
-        private CancellationTokenSource? _routingCts;
-
-        public RouterAgent(IKernelService kernelService, string workingDirectory) : base(SystemPrompt)
+        public RouterAgent(IKernelService kernelService, ISettingsService settingsService, IStreamingExecutionEngine executionEngine, AgentContext context) : base(SystemPrompt)
         {
-            kernel = kernelService.BuildKernel(workingDirectory);
-            kernel.Plugins.AddFromObject(new WorkflowPlugin
-            {
-                OnRouteToPlanner = () =>
-                {
-                    state = WorkflowState.Planning;
-                },
-                OnRouteToDeveloper = () =>
-                {
-                    state = WorkflowState.Developing;
-                }
-            }, "workflow");
+            _executionEngine = executionEngine;
+            kernel = kernelService.BuildKernel(settingsService.Current.WorkingDirectory);
+            kernel.Plugins.AddFromObject(new WorkflowPlugin(context), "workflow");
 
             KernelFunction[] kernelFunctions = [
                 kernel.Plugins.GetFunction("workflow", "route_to_developer"),
@@ -70,66 +59,30 @@ namespace SimpleAgent.Agents
             Log.Logger.Information("Router初始化成功, Seed:{Seed}  Temperature:{Temperature}", settings.Seed, settings.Temperature);
         }
 
-        public void StopRouting()
-        {
-            _routingCts?.Cancel();
-        }
-
         /// <summary>
-        /// 处理路由判断
+        /// 执行
         /// </summary>
-        /// <returns>是否需要规划</returns>
-        public async Task<bool> HandleRoutingAsync(string userInput)
+        /// <param name="context"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public async Task<WorkflowState> ExecuteAsync(AgentContext context, CancellationToken cancellationToken)
         {
-            Log.Information("正在路由...");
+            Log.Information("Router 正在路由...");
+
+            // 装载用户上下文
             Reset();
-            AddUserMessage($"用户输入: {userInput}");
+            AddUserMessage($"用户输入: {context.OriginalRequest}");
 
-            using var cts = new CancellationTokenSource();
-            _routingCts = new CancellationTokenSource();
-            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, _routingCts.Token);
+            // 清空 NextState，等待模型执行结果
+            context.NextState = null;
 
-            try
-            {
-                StringBuilder sb = new();
-                state = WorkflowState.Routing;
-                await foreach (var chunk in GetStreamingChatMessageContentsAsync(linkedCts))
-                {
-                    sb.Append(chunk.Content);
-                    if (state != WorkflowState.Routing)
-                    {
-                        // 触发取消，安全释放底层资源
-                        cts.Cancel();
-                    }
-                }
+            // 运行执行引擎，条件是：如果 NextState 被修改，说明工具被调用，流应当中断
+            await _executionEngine.ExecuteStreamAsync(this, Type, cancellationToken,
+                () => context.NextState == null,
+                () => Utility.Utility.ChatHistorySave(Type, chatHistory));
 
-                if (state == WorkflowState.Developing)
-                {
-                    return false;
-                }
-                else if (state == WorkflowState.Planning)
-                {
-                    return true;
-                }
-                else
-                {
-                    Log.Warning("Router 状态错误: {state}", state);
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                if (_routingCts.IsCancellationRequested)
-                    Log.Information("用户强制取消了路由。");
-                else
-                    Log.Information("已安全截断 Router 的输出。");
-            }
-            finally
-            {
-                _routingCts.Dispose();
-                _routingCts = null;
-            }
-
-            return false;
+            // 返回插件赋予的下一个状态；如果没设置，说明没有结束
+            return context.NextState ?? WorkflowState.Routing;
         }
     }
 }

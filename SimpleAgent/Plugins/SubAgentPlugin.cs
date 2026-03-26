@@ -19,13 +19,15 @@ namespace SimpleAgent.Plugins
         private readonly IKernelService kernelService;
         private readonly ISettingsService settingsService;
         private readonly ChatUIService chatUIService;
+        private readonly IStreamingExecutionEngine executionEngine;
 
-        public SubAgentPlugin(ILogger<SubAgentPlugin> logger, IKernelService kernelService, ISettingsService settingsService, ChatUIService chatUIService)
+        public SubAgentPlugin(ILogger<SubAgentPlugin> logger, IKernelService kernelService, ISettingsService settingsService, IStreamingExecutionEngine executionEngine, ChatUIService chatUIService)
         {
             this.logger = logger;
             this.kernelService = kernelService;
             this.settingsService = settingsService;
             this.chatUIService = chatUIService;
+            this.executionEngine = executionEngine;
         }
 
         [KernelFunction("delegate_sub_task")]
@@ -54,7 +56,7 @@ namespace SimpleAgent.Plugins
             while (!isFinished && safetyCounter < settingsService.Current.SubMaxDevCycle)
             {
                 safetyCounter++;
-                await ProcessAgentStreamAsync(subAgent, cancellationToken, () => { return !isFinished; });
+                await executionEngine.ExecuteStreamAsync(subAgent, AgentType.SubDeveloper, cancellationToken, () => !isFinished);
                 cancellationToken.ThrowIfCancellationRequested();
 
                 // 如果子代理结束了还没完成任务
@@ -73,114 +75,6 @@ namespace SimpleAgent.Plugins
 
             chatUIService.SendSystemMessage(AgentType.Developer, $"子代理已完成任务，交还控制权。");
             return $"[子代理执行完毕，汇报如下]:\n{subAgentResult}";
-        }
-
-
-        /// <summary>
-        /// 通用的智能体流式输出与工具调用处理方法
-        /// </summary>
-        /// <param name="agent"></param>
-        /// <param name="keepRunningCondition">持续运行条件(true:继续 false:终止)</param>
-        /// <returns></returns>
-        private async Task ProcessAgentStreamAsync(BaseAgent agent, CancellationToken cancellationToken, Func<bool> keepRunningCondition)
-        {
-            AgentType agentType = AgentType.SubDeveloper;
-            string? currentCallId = null;
-            string? currentFunctionName = null;
-            int currentLine = -1;
-
-            StringBuilder argumentsBuilder = new();
-            StringBuilder sb = new();
-
-            using var cts = new CancellationTokenSource();
-            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken);
-
-            try
-            {
-                await foreach (var chunk in agent.GetStreamingChatMessageContentsAsync(linkedCts))
-                {
-                    // 获取所有普通的消息文本内容
-                    var textContents = chunk.Items.OfType<StreamingTextContent>();
-                    foreach (var textContent in textContents)
-                    {
-                        sb.Append(textContent.Text);
-                        chatUIService.SendAIMessage(agentType, textContent.Text ?? "");
-                    }
-
-                    // 获取所有工具调用的内容（模型决定调用插件时会触发）这里会流式输出函数名、参数等, Arguments 参数是一段段 JSON 字符串流式到达的
-                    var functionCallUpdates = chunk.Items.OfType<StreamingFunctionCallUpdateContent>();
-                    foreach (var functionCallUpdate in functionCallUpdates)
-                    {
-                        // 如果遇到了新的 CallId，说明开始了一个新的工具调用
-                        if (!string.IsNullOrEmpty(functionCallUpdate.CallId) && functionCallUpdate.CallId != currentCallId)
-                        {
-                            // 如果之前已经有未结束的调用（并行调用场景），在这里触发上一个调用的结束
-                            if (currentCallId != null)
-                            {
-                                SendToolMessage(agentType, currentFunctionName, currentLine, argumentsBuilder.ToString());
-                            }
-
-                            // 记录新调用的状态
-                            currentCallId = functionCallUpdate.CallId;
-                            currentFunctionName = functionCallUpdate.Name;
-                            argumentsBuilder.Clear();
-
-                            currentLine = SendToolMessage(agentType, functionCallUpdate.Name, -1, functionCallUpdate.Arguments);
-                        }
-
-                        // 持续拼接参数 (JSON 片段)
-                        if (functionCallUpdate.Arguments != null)
-                        {
-                            argumentsBuilder.Append(functionCallUpdate.Arguments);
-                        }
-                        break;
-                    }
-
-                    // 通过委托判断是否需要因为状态改变而中断流
-                    if (!keepRunningCondition())
-                    {
-                        // 触发取消，安全释放底层资源
-                        cts.Cancel();
-                    }
-                }
-
-                // 流结束时，如果还有缓存的 CallId，说明该工具调用的参数已经全部接收完毕
-                if (currentCallId != null || currentLine >= 0)
-                {
-                    SendToolMessage(agentType, currentFunctionName, currentLine, argumentsBuilder.ToString());
-                }
-
-                if (sb.Length > 0)
-                {
-                    agent.AddAssistantMessage(sb.ToString());
-                }
-                chatUIService.SendSystemMessage(agentType);
-            }
-            catch (OperationCanceledException)
-            {
-                if (linkedCts != null && linkedCts.IsCancellationRequested)
-                {
-                    // 抛出异常，让外层捕获
-                    throw;
-                }
-                else
-                {
-                    // 捕获取消信息
-                    logger.LogInformation("已安全截断 {Type} 的输出。", agentType);
-                }
-            }
-        }
-
-        /// <summary>
-        /// 向UI界面发送工具调用消息（专门处理模型调用插件时的显示）
-        /// </summary>
-        /// <param name="agentType"></param>
-        /// <param name="name"></param>
-        /// <param name="arguments"></param>
-        private int SendToolMessage(AgentType agentType, string? name, int line, string? arguments)
-        {
-            string msg = Utility.Utility.ToolMessageFormatter(name, line, arguments);
-            return chatUIService.SendToolMessage(agentType, msg, line);
         }
     }
 }

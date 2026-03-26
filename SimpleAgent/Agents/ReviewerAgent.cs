@@ -1,8 +1,10 @@
-﻿using Microsoft.SemanticKernel;
+﻿using Microsoft.Agents.AI;
+using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Agents;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 using Serilog;
+using SimpleAgent.Models;
 using SimpleAgent.Plugins;
 using SimpleAgent.Services;
 using System;
@@ -14,10 +16,11 @@ using System.Threading.Tasks;
 
 namespace SimpleAgent.Agents
 {
-	public class ReviewerAgent : BaseAgent
-	{
-		public const string AgentName = "Reviewer";
-		public const string NickName = "审查智能体";
+	public class ReviewerAgent : BaseAgent, IWorkflowAgent
+    {
+        public AgentType Type => AgentType.Reviewer;
+        private readonly IStreamingExecutionEngine _executionEngine;
+        public const string NickName = "审查智能体";
 		private const string SystemPrompt = @"
 # Role
 你是一位极其严格的软件质量保证（QA）工程师。
@@ -34,12 +37,13 @@ namespace SimpleAgent.Agents
 - 【关键指令】如果所有需求均已满足，你必须调用 `pass_review` 函数。
 - 【关键指令】如果发现有遗漏的功能，或者开发者提交的总结中存在明显的逻辑风险，你必须调用 `fail_review` 函数，并在参数中清晰地列出“缺失了什么”或“哪里需要重做”，以便打回给开发者。";
 
-		public ReviewerAgent(IKernelService kernelService, string workingDirectory, Action onReviewPassed, Action<string> onReviewFailed) : base(SystemPrompt)
-		{
-			kernel = kernelService.BuildKernel(workingDirectory);
-			kernel.Plugins.AddFromObject(new WorkflowPlugin { OnReviewPassed = onReviewPassed, OnReviewFailed = onReviewFailed }, "workflow");
+		public ReviewerAgent(IKernelService kernelService, ISettingsService settingsService, IStreamingExecutionEngine executionEngine, AgentContext context) : base(SystemPrompt)
+        {
+            _executionEngine = executionEngine;
+            kernel = kernelService.BuildKernel(settingsService.Current.WorkingDirectory);
+            kernel.Plugins.AddFromObject(new WorkflowPlugin(context), "workflow");
 
-			KernelFunction[] kernelFunctions = [
+            KernelFunction[] kernelFunctions = [
 				kernel.Plugins.GetFunction("file_system", "read_file"),
 				kernel.Plugins.GetFunction("file_system", "list_directory"),
 				kernel.Plugins.GetFunction("file_system", "path_exists"),
@@ -58,6 +62,38 @@ namespace SimpleAgent.Agents
 			};
 
             Log.Logger.Information("Reviewer初始化成功, Seed:{Seed}  Temperature:{Temperature}", settings.Seed, settings.Temperature);
-		}
-	}
+        }
+
+        /// <summary>
+        /// 执行
+        /// </summary>
+        /// <param name="context"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public async Task<WorkflowState> ExecuteAsync(AgentContext context, CancellationToken cancellationToken)
+        {
+            Log.Information("Reviewer 正在验收...");
+
+            // 装载用户上下文
+            if (!context.IsImprove || context.IsChangePlan)
+            {
+                AddUserMessage($"【以下为原计划】\n{context.DetailedPlan}\n\n【以下为开发者提交的摘要】\n{context.DeveloperSummary}");
+            }
+            else
+            {
+                AddUserMessage($"【以下为原始需求】\n{context.OriginalRequest}\n\n【以下为开发者提交的摘要】\n{context.DeveloperSummary}");
+            }
+
+            // 清空 NextState，等待模型执行结果
+            context.NextState = null;
+
+            // 运行执行引擎，条件是：如果 NextState 被修改，说明工具被调用，流应当中断
+            await _executionEngine.ExecuteStreamAsync(this, Type, cancellationToken,
+                () => context.NextState == null,
+                () => Utility.Utility.ChatHistorySave(Type, chatHistory));
+
+            // 返回插件赋予的下一个状态；如果没设置，说明没有结束
+            return context.NextState ?? WorkflowState.Reviewing;
+        }
+    }
 }

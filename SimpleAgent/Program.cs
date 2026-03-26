@@ -9,6 +9,8 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Serilog;
+using SimpleAgent.Agents;
+using SimpleAgent.Factory;
 using SimpleAgent.Plugins;
 using SimpleAgent.Reducer;
 using SimpleAgent.Services;
@@ -57,14 +59,26 @@ namespace SimpleAgent
                 builder.AddSerilog(dispose: true);
             });
 
+            // 注册智能体
+            services.AddTransient<IWorkflowAgent, PlannerAgent>();
+            services.AddTransient<IWorkflowAgent, DeveloperAgent>();
+            services.AddTransient<IWorkflowAgent, ReviewerAgent>();
+            services.AddTransient<IWorkflowAgent, RouterAgent>();
+
             // 注册窗体和业务类
             services.AddSingleton<ISettingsService, SettingsService>();
             services.AddSingleton<IKernelService, KernelService>();
             services.AddSingleton<IBackgroundService, Services.BackgroundService>();
+            services.AddSingleton<IStreamingExecutionEngine, StreamingExecutionEngine>();
+            services.AddSingleton<AgentContextRepository>();
             services.AddTransient<MultiAgentOrchestrator>();
             services.AddSingleton<GPUStackClient>();
             services.AddSingleton<ChatUIService>();
             services.AddTransient<MainForm>();
+
+            // 工厂类
+            services.AddSingleton<IAgentFactory, AgentFactory>();
+            services.AddSingleton<IOrchestratorFactory, OrchestratorFactory>();
 
             // 注册插件
             services.AddTransient<TerminalPlugin>();
@@ -78,6 +92,23 @@ namespace SimpleAgent
 
             // 构建服务提供者
             ServiceProvider = services.BuildServiceProvider();
+
+            // 核心的事件解耦
+            var engine = ServiceProvider.GetRequiredService<IStreamingExecutionEngine>();
+            var chatUI = ServiceProvider.GetRequiredService<ChatUIService>();
+            var orchestrator = ServiceProvider.GetRequiredService<MultiAgentOrchestrator>();
+
+            // 把 UI 更新方法绑定到独立引擎的事件上，业务代码无需知道 UI 的存在
+            engine.OnMessageReceived += chatUI.SendAIMessage;
+            engine.OnStreamCompleted += chatUI.SendCompletedMessage;
+            engine.OnToolCall += (agentType, name, line, args) =>
+            {
+                string msg = Utility.Utility.ToolMessageFormatter(name, line, args);
+                return chatUI.SendToolMessage(agentType, msg, line);
+            };
+            // Token 更新
+            // 这边你可以在 MainForm 里订阅或者让 Orchestrator 中转
+            //engine.OnTokenUsage += orchestrator.UpdateTokens;
 
             try
             {

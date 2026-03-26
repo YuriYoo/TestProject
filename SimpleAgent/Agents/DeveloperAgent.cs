@@ -1,4 +1,6 @@
-﻿using Microsoft.SemanticKernel;
+﻿using Microsoft.Agents.AI;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Agents;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
@@ -15,9 +17,12 @@ using System.Threading.Tasks;
 
 namespace SimpleAgent.Agents
 {
-    public class DeveloperAgent : BaseAgent
+    public class DeveloperAgent : BaseAgent, IWorkflowAgent
     {
-        public const string AgentName = "Developer";
+        public AgentType Type => AgentType.Developer;
+        private readonly IStreamingExecutionEngine _executionEngine;
+        private readonly ISettingsService settingsService;
+        private readonly IChatHistoryReducer historyReducer;
         public const string NickName = "开发智能体";
         private const string SystemPrompt = @"
 # Role
@@ -43,10 +48,13 @@ namespace SimpleAgent.Agents
 
         // - 【绝对禁止】你作为管理者，绝对不能直接使用 `write_file`、`edit_file`、`append_file` 来编写主体业务代码！
 
-        public DeveloperAgent(IKernelService kernelService, string workingDirectory, Action<string> submittedAction) : base(SystemPrompt)
+        public DeveloperAgent(IKernelService kernelService, IChatHistoryReducer historyReducer, ISettingsService settingsService, IStreamingExecutionEngine executionEngine, AgentContext context) : base(SystemPrompt)
         {
-            kernel = kernelService.BuildKernel(workingDirectory);
-            kernel.Plugins.AddFromObject(new WorkflowPlugin { OnDevelopmentSubmitted = submittedAction }, "workflow");
+            _executionEngine = executionEngine;
+            this.historyReducer = historyReducer;
+            this.settingsService = settingsService;
+            kernel = kernelService.BuildKernel(settingsService.Current.WorkingDirectory);
+            kernel.Plugins.AddFromObject(new WorkflowPlugin(context), "workflow");
 
             KernelFunction[] kernelFunctions = [
                 kernel.Plugins.GetFunction("sub_agent", "delegate_sub_task"),
@@ -76,6 +84,79 @@ namespace SimpleAgent.Agents
             };
 
             Log.Logger.Information("Developer初始化成功, Seed:{Seed}  Temperature:{Temperature}", settings.Seed, settings.Temperature);
+        }
+
+        /// <summary>
+        /// 执行
+        /// </summary>
+        /// <param name="context"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public async Task<WorkflowState> ExecuteAsync(AgentContext context, CancellationToken cancellationToken)
+        {
+            Log.Information("Developer 正在编写和测试代码...");
+            context.DevCycleCount++;
+
+            if (context.DevCycleCount > settingsService.Current.MaxDevCycle)
+            {
+                Log.Information("已超过最大开发轮次，强制中止！");
+                throw new Exception("开发-测试循环次数超限，强制中止！");
+            }
+
+            // 首次发送的为执行计划, 后续的为 Reviewer 修改
+            if (context.DevCycleCount == 1)
+            {
+                // 如果没有计划(用户直接向Coder发起请求)
+                if (string.IsNullOrEmpty(context.DetailedPlan))
+                {
+                    context.DetailedPlan = context.OriginalRequest;
+                    AddUserMessage(context.DetailedPlan);
+                }
+                // 如果有计划, 且已经是完善阶段了
+                else if (context.IsImprove)
+                {
+                    // 如果计划变更了
+                    if (context.IsChangePlan)
+                    {
+                        AddUserMessage($"请根据以下计划开发：\n{context.DetailedPlan}");
+                    }
+                    // 如果计划没变, 说明用户直接向Coder提出意见
+                    else
+                    {
+                        AddUserMessage(context.OriginalRequest);
+                    }
+                }
+                // 如果有计划, 且还没到完善阶段
+                else
+                {
+                    AddUserMessage($"请根据以下计划开发：\n{context.DetailedPlan}");
+                }
+            }
+            else if (!string.IsNullOrEmpty(context.ReviewerFeedback))
+            {
+                AddUserMessage($"Reviewer 驳回，要求做如下修改：\n{context.ReviewerFeedback}");
+                context.ReviewerFeedback = string.Empty;
+            }
+            else
+            {
+                AddUserMessage("继续");
+                AddDeveloperMessage("如果你确定已经完成计划，请调用 `submit_for_review` 提交审查。如果没有完成任务请不要停止，继续完成你的工作。");
+            }
+
+            // 清空 NextState，等待模型执行结果
+            context.NextState = null;
+
+            // 运行执行引擎，条件是：如果 NextState 被修改，说明工具被调用，流应当中断
+            await _executionEngine.ExecuteStreamAsync(this, Type, cancellationToken,
+                () => context.NextState == null,
+                () => Utility.Utility.ChatHistorySave(Type, chatHistory));
+
+            // 上下文压缩
+            // TODO: 将上下文数量写入到AgentContext中, 直接在此处先判断是否超过压缩阈值
+            await chatHistory.ReduceInPlaceAsync(historyReducer, CancellationToken.None);
+
+            // 返回插件赋予的下一个状态；如果没设置，说明还没有结束对话
+            return context.NextState ?? WorkflowState.Developing;
         }
     }
 }
