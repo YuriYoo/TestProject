@@ -37,6 +37,7 @@ namespace SimpleAgent.Agents
 4. 你必须调用以下两个函数之一，且只能调用一次： `route_to_planner` 或 `route_to_developer` ";
 
         private WorkflowState state = WorkflowState.Idle;
+        private CancellationTokenSource? _routingCts;
 
         public RouterAgent(IKernelService kernelService, string workingDirectory) : base(SystemPrompt)
         {
@@ -69,6 +70,11 @@ namespace SimpleAgent.Agents
             Log.Logger.Information("Router初始化成功, Seed:{Seed}  Temperature:{Temperature}", settings.Seed, settings.Temperature);
         }
 
+        public void StopRouting()
+        {
+            _routingCts?.Cancel();
+        }
+
         /// <summary>
         /// 处理路由判断
         /// </summary>
@@ -80,12 +86,14 @@ namespace SimpleAgent.Agents
             AddUserMessage($"用户输入: {userInput}");
 
             using var cts = new CancellationTokenSource();
+            _routingCts = new CancellationTokenSource();
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, _routingCts.Token);
 
             try
             {
                 StringBuilder sb = new();
                 state = WorkflowState.Routing;
-                await foreach (var chunk in GetStreamingChatMessageContentsAsync(cts))
+                await foreach (var chunk in GetStreamingChatMessageContentsAsync(linkedCts))
                 {
                     sb.Append(chunk.Content);
                     if (state != WorkflowState.Routing)
@@ -94,25 +102,33 @@ namespace SimpleAgent.Agents
                         cts.Cancel();
                     }
                 }
+
+                if (state == WorkflowState.Developing)
+                {
+                    return false;
+                }
+                else if (state == WorkflowState.Planning)
+                {
+                    return true;
+                }
+                else
+                {
+                    Log.Warning("Router 状态错误: {state}", state);
+                }
             }
             catch (OperationCanceledException)
             {
-                // 捕获取消信息
-                Log.Information("已安全截断 Router 的输出。");
+                if (_routingCts.IsCancellationRequested)
+                    Log.Information("用户强制取消了路由。");
+                else
+                    Log.Information("已安全截断 Router 的输出。");
+            }
+            finally
+            {
+                _routingCts.Dispose();
+                _routingCts = null;
             }
 
-            if (state == WorkflowState.Developing)
-            {
-                return false;
-            }
-            else if (state == WorkflowState.Planning)
-            {
-                return true;
-            }
-            else
-            {
-                Log.Warning("Router 状态错误: {state}", state);
-            }
             return false;
         }
     }

@@ -30,7 +30,6 @@
         {
             components = new System.ComponentModel.Container();
             UserInput = new TextBox();
-            SendButton = new SimpleAgent.UserControls.FlatButton();
             TopMenu = new MenuStrip();
             TopMenu_AppName = new ToolStripTextBox();
             文件ToolStripMenuItem = new ToolStripMenuItem();
@@ -60,6 +59,9 @@
             label3 = new Label();
             label4 = new Label();
             MiddlePanel = new TableLayoutPanel();
+            ChatButtonPanel = new Panel();
+            StopButton = new SimpleAgent.UserControls.FlatButton();
+            SendButton = new SimpleAgent.UserControls.FlatButton();
             ChatPanelContainer = new Panel();
             CoderChatPanel = new FlowLayoutPanel();
             ReviewerChatPanel = new FlowLayoutPanel();
@@ -100,6 +102,7 @@
             ContentContainer.SuspendLayout();
             LeftPanel.SuspendLayout();
             MiddlePanel.SuspendLayout();
+            ChatButtonPanel.SuspendLayout();
             ChatPanelContainer.SuspendLayout();
             AgentTabPanel.SuspendLayout();
             RightPanel.SuspendLayout();
@@ -120,23 +123,6 @@
             UserInput.Size = new Size(611, 70);
             UserInput.TabIndex = 1;
             UserInput.Text = "帮我用web开发一个笔记软件";
-            // 
-            // SendButton
-            // 
-            SendButton.BackColor = Color.DodgerBlue;
-            SendButton.Dock = DockStyle.Fill;
-            SendButton.FlatAppearance.BorderSize = 0;
-            SendButton.FlatAppearance.MouseDownBackColor = Color.SteelBlue;
-            SendButton.FlatAppearance.MouseOverBackColor = Color.DeepSkyBlue;
-            SendButton.FlatStyle = FlatStyle.Flat;
-            SendButton.ForeColor = Color.White;
-            SendButton.Location = new Point(621, 572);
-            SendButton.Margin = new Padding(5);
-            SendButton.Name = "SendButton";
-            SendButton.Size = new Size(50, 70);
-            SendButton.TabIndex = 2;
-            SendButton.Text = "发送";
-            SendButton.UseVisualStyleBackColor = false;
             // 
             // TopMenu
             // 
@@ -450,7 +436,7 @@
             MiddlePanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             MiddlePanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 60F));
             MiddlePanel.Controls.Add(UserInput, 0, 2);
-            MiddlePanel.Controls.Add(SendButton, 1, 2);
+            MiddlePanel.Controls.Add(ChatButtonPanel, 1, 2);
             MiddlePanel.Controls.Add(ChatPanelContainer, 0, 1);
             MiddlePanel.Controls.Add(AgentTabPanel, 0, 0);
             MiddlePanel.Dock = DockStyle.Fill;
@@ -463,6 +449,52 @@
             MiddlePanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
             MiddlePanel.Size = new Size(676, 647);
             MiddlePanel.TabIndex = 4;
+            // 
+            // ChatButtonPanel
+            // 
+            ChatButtonPanel.Controls.Add(SendButton);
+            ChatButtonPanel.Controls.Add(StopButton);
+            ChatButtonPanel.Dock = DockStyle.Fill;
+            ChatButtonPanel.Location = new Point(621, 572);
+            ChatButtonPanel.Margin = new Padding(5);
+            ChatButtonPanel.Name = "ChatButtonPanel";
+            ChatButtonPanel.Size = new Size(50, 70);
+            ChatButtonPanel.TabIndex = 5;
+            // 
+            // StopButton
+            // 
+            StopButton.BackColor = Color.IndianRed;
+            StopButton.Dock = DockStyle.Fill;
+            StopButton.FlatAppearance.BorderSize = 0;
+            StopButton.FlatAppearance.MouseDownBackColor = Color.Maroon;
+            StopButton.FlatAppearance.MouseOverBackColor = Color.Brown;
+            StopButton.FlatStyle = FlatStyle.Flat;
+            StopButton.ForeColor = Color.White;
+            StopButton.Location = new Point(0, 0);
+            StopButton.Margin = new Padding(0);
+            StopButton.Name = "StopButton";
+            StopButton.Size = new Size(50, 70);
+            StopButton.TabIndex = 3;
+            StopButton.Text = "停止";
+            StopButton.UseVisualStyleBackColor = false;
+            StopButton.Click += StopButton_Click;
+            // 
+            // SendButton
+            // 
+            SendButton.BackColor = Color.DodgerBlue;
+            SendButton.Dock = DockStyle.Fill;
+            SendButton.FlatAppearance.BorderSize = 0;
+            SendButton.FlatAppearance.MouseDownBackColor = Color.SteelBlue;
+            SendButton.FlatAppearance.MouseOverBackColor = Color.DeepSkyBlue;
+            SendButton.FlatStyle = FlatStyle.Flat;
+            SendButton.ForeColor = Color.White;
+            SendButton.Location = new Point(0, 0);
+            SendButton.Margin = new Padding(0);
+            SendButton.Name = "SendButton";
+            SendButton.Size = new Size(50, 70);
+            SendButton.TabIndex = 2;
+            SendButton.Text = "发送";
+            SendButton.UseVisualStyleBackColor = false;
             // 
             // ChatPanelContainer
             // 
@@ -999,6 +1031,7 @@
             LeftPanel.PerformLayout();
             MiddlePanel.ResumeLayout(false);
             MiddlePanel.PerformLayout();
+            ChatButtonPanel.ResumeLayout(false);
             ChatPanelContainer.ResumeLayout(false);
             ChatPanelContainer.PerformLayout();
             AgentTabPanel.ResumeLayout(false);
@@ -1013,7 +1046,6 @@
 
         #endregion
         private TextBox UserInput;
-		private SimpleAgent.UserControls.FlatButton SendButton;
 		private MenuStrip TopMenu;
 		private ToolStripMenuItem 文件ToolStripMenuItem;
 		private ToolStripMenuItem 设置ToolStripMenuItem;
@@ -1078,5 +1110,8 @@
 		public Label RInTokens;
 		public Label ROutTokens;
         public UserControls.QuestionDialog QuestionDialog;
+        private UserControls.FlatButton SendButton;
+        private Panel ChatButtonPanel;
+        private UserControls.FlatButton StopButton;
     }
 }

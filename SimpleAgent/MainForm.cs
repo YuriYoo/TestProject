@@ -41,6 +41,9 @@ namespace SimpleAgent
         private readonly RouterAgent routerAgent;
         private MultiAgentOrchestrator multiAgentOrchestrator;
 
+        /// <summary>是否正在运行中</summary>
+        private bool _isProcessing = false;
+
         public MainForm(ILogger<MainForm> logger, ISettingsService settings, IKernelService kernelService, IBackgroundService backgroundService, MultiAgentOrchestrator multiAgentOrchestrator, GPUStackClient stackClient, ChatUIService chatUIService)
         {
             this.logger = logger;
@@ -50,7 +53,7 @@ namespace SimpleAgent
             this.multiAgentOrchestrator = multiAgentOrchestrator;
             multiAgentOrchestrator.Initialization(settings.Current.WorkingDirectory);
             multiAgentOrchestrator.OnTokenUsageUpdated += UpdateTokens;
-            multiAgentOrchestrator.OnResetUserInputState += RecoveryState;
+            multiAgentOrchestrator.OnResetUserInputState += ActivationSendButton;
 
             InitializeComponent();
 
@@ -88,16 +91,27 @@ namespace SimpleAgent
 
         bool isStart = false;
 
+        private void StopButton_Click(object sender, EventArgs e)
+        {
+            // 触发取消
+            //routerAgent.StopRouting();
+            multiAgentOrchestrator.StopWorkflow();
+            //ActivationSendButton();
+        }
+
         private async void SendButton_Click(object? sender, EventArgs e)
         {
+            if (ReviewerAgentTab.IsSelected)
+            {
+                _ = await chatUIService.ShowQuestion("仅可以与 [规划智能体] 或 [编程智能体] 进行对话，请根据需要进行切换。", QuestionMode.NoSelect, null);
+                return;
+            }
+
             string text = UserInput.Text.Trim();
             if (string.IsNullOrEmpty(text)) return;
 
             UserInput.Clear();
-            UserInput.Focus();
-
-            // 禁用按钮，防止 AI 回复期间重复点击
-            SendButton.Enabled = false;
+            ActivationStopButton();
 
             if (isStart)
             {
@@ -111,13 +125,9 @@ namespace SimpleAgent
             {
                 chatUIService.SendUserMessage(AgentType.Planner, text);
             }
-            else if (CoderAgentTab.IsSelected)
-            {
-                chatUIService.SendUserMessage(AgentType.Developer, text);
-            }
             else
             {
-                _ = await chatUIService.ShowQuestion("仅可以与 [规划智能体] 或 [编程智能体] 进行对话，请根据需要进行切换。", QuestionMode.NoSelect, null);
+                chatUIService.SendUserMessage(AgentType.Developer, text);
             }
 
             // 判断是否需要进行规划
@@ -185,7 +195,7 @@ namespace SimpleAgent
         private async void RunDeveloping(string text)
         {
             await multiAgentOrchestrator.RunWorkflowAsync(text, WorkflowState.Developing);
-            RecoveryState();
+            ActivationSendButton();
             Trace.WriteLine("/////////// 已恢复初始状态2 ///////////");
         }
 
@@ -197,21 +207,38 @@ namespace SimpleAgent
         {
             isStart = true;
             await multiAgentOrchestrator.RunWorkflowAsync(text, WorkflowState.Planning);
-            RecoveryState();
+            ActivationSendButton();
             isStart = false;
             Trace.WriteLine("/////////// 已恢复初始状态 ///////////");
         }
 
         /// <summary>
-        /// 恢复按钮状态
+        /// 激活发送按钮, 关闭停止按钮
         /// </summary>
-        public void RecoveryState()
+        public void ActivationSendButton()
         {
+            _isProcessing = false;
+
             // 恢复 UI 状态
-            SendButton.Text = "发送";
             SendButton.Enabled = true;
+            SendButton.Visible = true;
+            chatUIService.SetStopRunning();
 
             // 焦点还给输入框，方便连续对话
+            UserInput.Focus();
+        }
+
+        /// <summary>
+        /// 激活停止按钮, 关闭发送按钮
+        /// </summary>
+        public void ActivationStopButton()
+        {
+            _isProcessing = true;
+
+            SendButton.Enabled = false;
+            SendButton.Visible = false;
+
+            // 焦点还给输入框
             UserInput.Focus();
         }
 
@@ -414,6 +441,7 @@ namespace SimpleAgent
                 PlannerChatPanel.Visible = true;
                 CoderChatPanel.Visible = false;
                 ReviewerChatPanel.Visible = false;
+                UserInput.Focus();
                 UpdateChatPanelWidth(PlannerChatPanel);
 
             };
@@ -426,6 +454,7 @@ namespace SimpleAgent
                 PlannerChatPanel.Visible = false;
                 CoderChatPanel.Visible = true;
                 ReviewerChatPanel.Visible = false;
+                UserInput.Focus();
                 UpdateChatPanelWidth(CoderChatPanel);
             };
             ReviewerAgentTab.Click += (sender, e) =>
@@ -437,6 +466,7 @@ namespace SimpleAgent
                 PlannerChatPanel.Visible = false;
                 CoderChatPanel.Visible = false;
                 ReviewerChatPanel.Visible = true;
+                UserInput.Focus();
                 UpdateChatPanelWidth(ReviewerChatPanel);
             };
         }

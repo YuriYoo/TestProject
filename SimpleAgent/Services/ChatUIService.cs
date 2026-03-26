@@ -206,7 +206,8 @@ namespace SimpleAgent.Services
             }
 
             panel.Controls.Add(item);
-            panel.ScrollControlIntoView(item);
+            //panel.ScrollControlIntoView(item);
+            panel.VerticalScroll.Value = panel.VerticalScroll.Maximum;
             return item;
         }
 
@@ -218,6 +219,14 @@ namespace SimpleAgent.Services
             }
             inChat[agentType] = null;
             agentTabs[agentType].SetRunning(false);
+        }
+
+        public void SetStopRunning()
+        {
+            foreach (var tab in agentTabs.Values)
+            {
+                tab.SetRunning(false);
+            }
         }
 
         /// <summary>
@@ -266,7 +275,6 @@ namespace SimpleAgent.Services
             panel.VerticalScroll.Value = panel.VerticalScroll.Maximum;
             panel.ResumeLayout();
         }
-
 
         /// <summary>
         /// 添加换行

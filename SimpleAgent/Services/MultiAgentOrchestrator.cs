@@ -45,6 +45,9 @@ namespace SimpleAgent.Services
 
         private WorkflowState _currentState;
 
+        /// <summary>全局停止</summary>
+        private CancellationTokenSource? _workflowCts;
+
         /// <summary>Token使用更新事件</summary>
         public event Action<AgentType, ChatTokenUsage?> OnTokenUsageUpdated;
 
@@ -92,6 +95,14 @@ namespace SimpleAgent.Services
         }
 
         /// <summary>
+        /// 强制终止当前工作流
+        /// </summary>
+        public void StopWorkflow()
+        {
+            _workflowCts?.Cancel();
+        }
+
+        /// <summary>
         /// 向UI界面发送工具调用消息（专门处理模型调用插件时的显示）
         /// </summary>
         /// <param name="agentType"></param>
@@ -129,27 +140,44 @@ namespace SimpleAgent.Services
             _context.ReviewerFeedback = string.Empty;
             _context.DevCycleCount = 0;
 
-            while (_currentState != WorkflowState.Idle && _currentState != WorkflowState.Completed)
+            _workflowCts = new CancellationTokenSource();
+
+            try
             {
-                logger.LogInformation("开始状态: {state}", _currentState);
-                switch (_currentState)
+                while (_currentState != WorkflowState.Idle && _currentState != WorkflowState.Completed)
                 {
-                    // 讨论规划
-                    case WorkflowState.Planning:
-                        await HandlePlanningAsync();
-                        break;
+                    logger.LogInformation("开始状态: {state}", _currentState);
+                    switch (_currentState)
+                    {
+                        // 讨论规划
+                        case WorkflowState.Planning:
+                            await HandlePlanningAsync();
+                            break;
 
-                    // 开发测试
-                    case WorkflowState.Developing:
-                        await HandleDevelopingAsync();
-                        break;
+                        // 开发测试
+                        case WorkflowState.Developing:
+                            await HandleDevelopingAsync();
+                            break;
 
-                    // 验收修改
-                    case WorkflowState.Reviewing:
-                        await HandleReviewingAsync();
-                        break;
+                        // 验收修改
+                        case WorkflowState.Reviewing:
+                            await HandleReviewingAsync();
+                            break;
+                    }
+                    logger.LogInformation("结束状态: {state}", _currentState);
                 }
-                logger.LogInformation("结束状态: {state}", _currentState);
+            }
+            catch (OperationCanceledException)
+            {
+                // 捕获到手动终止
+                _currentState = WorkflowState.Idle;
+                logger.LogInformation("用户手动终止了工作流。");
+                //chatUIService.SendSystemMessage(AgentType.System, "[系统通知] 任务已被手动强制终止。");
+            }
+            finally
+            {
+                _workflowCts?.Dispose();
+                _workflowCts = null;
             }
 
             _context.IsImprove = true;
@@ -174,11 +202,12 @@ namespace SimpleAgent.Services
             StringBuilder sb = new();
 
             using var cts = new CancellationTokenSource();
-
+            // 将内部的CTS与外部强制终止的CTS链接起来
+            using var linkedCts = _workflowCts != null ? CancellationTokenSource.CreateLinkedTokenSource(cts.Token, _workflowCts.Token) : cts;
             try
             {
                 var isSaveLog = false;
-                await foreach (var chunk in agent.GetStreamingChatMessageContentsAsync(cts))
+                await foreach (var chunk in agent.GetStreamingChatMessageContentsAsync(linkedCts))
                 {
                     // 获取所有普通的消息文本内容
                     var textContents = chunk.Items.OfType<StreamingTextContent>();
@@ -244,24 +273,31 @@ namespace SimpleAgent.Services
                         }
                     }
                 }
+
+                // 流结束时，如果还有缓存的 CallId，说明该工具调用的参数已经全部接收完毕
+                if (currentCallId != null || currentLine >= 0)
+                {
+                    SendToolMessage(agentType, currentFunctionName, currentLine, argumentsBuilder.ToString());
+                }
+
+                if (sb.Length > 0)
+                {
+                    agent.AddAssistantMessage(sb.ToString());
+                }
+                chatUIService.SendSystemMessage(agentType);
             }
             catch (OperationCanceledException)
             {
-                // 捕获取消信息
-                logger.LogInformation("已安全截断 {Type} 的输出。", agentType);
+                if (_workflowCts != null && _workflowCts.IsCancellationRequested)
+                {
+                    // 抛出异常，让外层的 RunWorkflowAsync 捕获以彻底中断整个状态机
+                    throw;
+                }
+                else
+                {
+                    logger.LogInformation("已安全截断 {Type} 的输出。", agentType);
+                }
             }
-
-            // 流结束时，如果还有缓存的 CallId，说明该工具调用的参数已经全部接收完毕
-            if (currentCallId != null || currentLine >= 0)
-            {
-                SendToolMessage(agentType, currentFunctionName, currentLine, argumentsBuilder.ToString());
-            }
-
-            if (sb.Length > 0)
-            {
-                agent.AddAssistantMessage(sb.ToString());
-            }
-            chatUIService.SendSystemMessage(agentType);
         }
 
         /// <summary>

@@ -31,9 +31,11 @@ namespace SimpleAgent.Plugins
         [KernelFunction("delegate_sub_task")]
         [Description("当你需要执行开发一个功能或修复一个Bug等类似任务时，使用此工具唤醒一个子代理去专门完成该部分工作。这能让你保持清晰的全局视野。")]
         public async Task<string> DelegateSubTaskAsync(
-            [Description("详细的子任务说明（告诉子代理它需要做什么、重点修改哪些文件、如何测试）")] string taskDescription)
+            [Description("详细的子任务说明（告诉子代理它需要做什么、重点修改哪些文件、如何测试）")] string taskDescription,
+            // SK 会自动注入当前的 cancellationToken
+            CancellationToken cancellationToken)
         {
-            chatUIService.SendSystemMessage(AgentType.Developer, $"正在唤醒子代理处理子任务：{taskDescription}");
+            chatUIService.SendSystemMessage(AgentType.Developer, $"正在唤醒子代理处理子任务：\n{taskDescription}");
 
             bool isFinished = false;
             string subAgentResult = string.Empty;
@@ -52,7 +54,8 @@ namespace SimpleAgent.Plugins
             while (!isFinished && safetyCounter < settingsService.Current.SubMaxDevCycle)
             {
                 safetyCounter++;
-                await ProcessAgentStreamAsync(subAgent, () => { return !isFinished; });
+                await ProcessAgentStreamAsync(subAgent, cancellationToken, () => { return !isFinished; });
+                cancellationToken.ThrowIfCancellationRequested();
 
                 // 如果子代理结束了还没完成任务
                 if (!isFinished)
@@ -79,7 +82,7 @@ namespace SimpleAgent.Plugins
         /// <param name="agent"></param>
         /// <param name="keepRunningCondition">持续运行条件(true:继续 false:终止)</param>
         /// <returns></returns>
-        private async Task ProcessAgentStreamAsync(BaseAgent agent, Func<bool> keepRunningCondition)
+        private async Task ProcessAgentStreamAsync(BaseAgent agent, CancellationToken cancellationToken, Func<bool> keepRunningCondition)
         {
             AgentType agentType = AgentType.SubDeveloper;
             string? currentCallId = null;
@@ -90,10 +93,11 @@ namespace SimpleAgent.Plugins
             StringBuilder sb = new();
 
             using var cts = new CancellationTokenSource();
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken);
 
             try
             {
-                await foreach (var chunk in agent.GetStreamingChatMessageContentsAsync(cts))
+                await foreach (var chunk in agent.GetStreamingChatMessageContentsAsync(linkedCts))
                 {
                     // 获取所有普通的消息文本内容
                     var textContents = chunk.Items.OfType<StreamingTextContent>();
@@ -139,24 +143,32 @@ namespace SimpleAgent.Plugins
                         cts.Cancel();
                     }
                 }
+
+                // 流结束时，如果还有缓存的 CallId，说明该工具调用的参数已经全部接收完毕
+                if (currentCallId != null || currentLine >= 0)
+                {
+                    SendToolMessage(agentType, currentFunctionName, currentLine, argumentsBuilder.ToString());
+                }
+
+                if (sb.Length > 0)
+                {
+                    agent.AddAssistantMessage(sb.ToString());
+                }
+                chatUIService.SendSystemMessage(agentType);
             }
             catch (OperationCanceledException)
             {
-                // 捕获取消信息
-                logger.LogInformation("已安全截断 {Type} 的输出。", agentType);
+                if (linkedCts != null && linkedCts.IsCancellationRequested)
+                {
+                    // 抛出异常，让外层捕获
+                    throw;
+                }
+                else
+                {
+                    // 捕获取消信息
+                    logger.LogInformation("已安全截断 {Type} 的输出。", agentType);
+                }
             }
-
-            // 流结束时，如果还有缓存的 CallId，说明该工具调用的参数已经全部接收完毕
-            if (currentCallId != null || currentLine >= 0)
-            {
-                SendToolMessage(agentType, currentFunctionName, currentLine, argumentsBuilder.ToString());
-            }
-
-            if (sb.Length > 0)
-            {
-                agent.AddAssistantMessage(sb.ToString());
-            }
-            chatUIService.SendSystemMessage(agentType);
         }
 
         /// <summary>
