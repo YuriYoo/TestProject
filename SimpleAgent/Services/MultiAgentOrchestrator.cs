@@ -258,16 +258,17 @@ namespace SimpleAgent.Services
                         if (!isSaveLog)
                         {
                             isSaveLog = true;
+                            var path = $"Logs\\{DateTime.Now:yyyyMMdd_HHmmss}_{agentType}.json";
                             switch (agentType)
                             {
                                 case AgentType.Planner:
-                                    Utility.Utility.ChatHistorySave(agentType, _plannerAgent.chatHistory);
+                                    ChatHistoryManager.Save(_plannerAgent.chatHistory, path);
                                     break;
                                 case AgentType.Developer:
-                                    Utility.Utility.ChatHistorySave(agentType, _developerAgent.chatHistory);
+                                    ChatHistoryManager.Save(_developerAgent.chatHistory, path);
                                     break;
                                 case AgentType.Reviewer:
-                                    Utility.Utility.ChatHistorySave(agentType, _reviewerAgent.chatHistory);
+                                    ChatHistoryManager.Save(_reviewerAgent.chatHistory, path);
                                     break;
                             }
                         }
