@@ -40,7 +40,7 @@ namespace SimpleAgent.Agents
         public RouterAgent(IKernelService kernelService, ISettingsService settingsService, IStreamingExecutionEngine executionEngine, AgentContext context) : base(SystemPrompt)
         {
             _executionEngine = executionEngine;
-            kernel = kernelService.BuildKernel(settingsService.Current.WorkingDirectory);
+            kernel = kernelService.BuildKernel(context.WorkingDirectory);
             kernel.Plugins.AddFromObject(new WorkflowPlugin(context), "workflow");
 
             KernelFunction[] kernelFunctions = [

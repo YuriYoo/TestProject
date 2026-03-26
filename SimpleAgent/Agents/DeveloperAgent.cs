@@ -53,7 +53,7 @@ namespace SimpleAgent.Agents
             _executionEngine = executionEngine;
             this.historyReducer = historyReducer;
             this.settingsService = settingsService;
-            kernel = kernelService.BuildKernel(settingsService.Current.WorkingDirectory);
+            kernel = kernelService.BuildKernel(context.WorkingDirectory);
             kernel.Plugins.AddFromObject(new WorkflowPlugin(context), "workflow");
 
             KernelFunction[] kernelFunctions = [
