@@ -18,15 +18,17 @@ namespace SimpleAgent.Reducer
 
         private readonly IKernelService kernelService;
         private readonly ISettingsService settingsService;
+        private readonly ChatUIService chatUIService;
         private readonly ILogger<CustomChatHistoryReducer> logger;
 
         /// <summary>
         /// 注入聊天完成服务，并支持自定义摘要提示词
         /// </summary>
-        public CustomChatHistoryReducer(ILogger<CustomChatHistoryReducer> logger, IKernelService kernelService, ISettingsService settingsService)
+        public CustomChatHistoryReducer(ILogger<CustomChatHistoryReducer> logger, IKernelService kernelService, ISettingsService settingsService, ChatUIService chatUIService)
         {
             this.kernelService = kernelService;
             this.settingsService = settingsService;
+            this.chatUIService = chatUIService;
             this.logger = logger;
         }
 
@@ -41,6 +43,7 @@ namespace SimpleAgent.Reducer
             if (chatHistory == null || count / maxToken < threshold * 0.01) return null;
 
             logger.LogInformation($"已超出上下文阈值，触发自动压缩");
+            chatUIService.SendSystemMessage(AgentType.Developer, "已超出上下文阈值，正在自动压缩...");
             var reducedHistory = new List<ChatMessageContent>();
             var messagesToSummarize = new List<ChatMessageContent>();
 
@@ -80,6 +83,9 @@ namespace SimpleAgent.Reducer
             var summaryMessage = new ChatMessageContent(AuthorRole.System, $"[之前已删除对话的摘要]: {summaryResult.Content}");
             reducedHistory.Add(summaryMessage);
 
+            var rate = (float)conversationText.Length / summaryMessage?.Content?.Length ?? conversationText.Length;
+            chatUIService.SendSystemMessage(AgentType.Developer, $"压缩完成，释放了 {(1 - rate) * 100:F2}% 的上下文空间");
+
             // 返回全新的历史记录列表
             return reducedHistory;
         }
@@ -110,8 +116,9 @@ namespace SimpleAgent.Reducer
         private int CalculateTokenCount(IReadOnlyList<ChatMessageContent> chatHistory)
         {
             int token = 0;
-            foreach (var msg in chatHistory)
+            for (int i = chatHistory.Count - 1; i >= 0; i--)
             {
+                ChatMessageContent? msg = chatHistory[i];
                 // 检查是否包含 "Usage" 键
                 if (msg.Metadata != null && msg.Metadata.TryGetValue("Usage", out var usageObject) && usageObject != null)
                 {
@@ -122,7 +129,8 @@ namespace SimpleAgent.Reducer
                         {
                             if (usage.TotalTokenCount > 0)
                             {
-                                token += usage.TotalTokenCount;
+                                token = usage.TotalTokenCount;
+                                break;
                             }
                         }
                     }

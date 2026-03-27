@@ -8,6 +8,7 @@ namespace SimpleAgent
 {
     public class Constant
     {
+        public const string HttpClientName = "OpenAIClient";
     }
 
     /// <summary>

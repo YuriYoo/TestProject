@@ -39,7 +39,6 @@ namespace SimpleAgent
         private readonly ISettingsService settings;
         private readonly IBackgroundService backgroundService;
         private readonly AgentContextRepository contextRepository;
-        private readonly IKernelService kernelService;
         private readonly GPUStackClient stackClient;
         private readonly ChatUIService chatUIService;
 
@@ -50,22 +49,18 @@ namespace SimpleAgent
         private MultiAgentOrchestrator multiAgentOrchestrator;
         private AgentContext currentContext;
 
-        /// <summary>是否正在运行中</summary>
-        private bool _isProcessing = false;
-
         public MainForm(ILogger<MainForm> logger,
             IOrchestratorFactory orchestratorFactory,
             AgentContextRepository contextRepository,
             ISettingsService settings,
-            IKernelService kernelService,
             IBackgroundService backgroundService,
+            IStreamingExecutionEngine streamingExecutionEngine,
             IAgentFactory agentFactory,
             GPUStackClient stackClient,
             ChatUIService chatUIService)
         {
             this.logger = logger;
             this.settings = settings;
-            this.kernelService = kernelService;
             this.agentFactory = agentFactory;
             this.contextRepository = contextRepository;
             this.orchestratorFactory = orchestratorFactory;
@@ -80,6 +75,8 @@ namespace SimpleAgent
             this.backgroundService = backgroundService;
             backgroundService.OnAddServer += (serviceId) => BackgroundServerListBox.Items.Add(serviceId);
             backgroundService.OnRemoveServer += BackgroundServerListBox.Items.Remove;
+
+            streamingExecutionEngine.OnTokenUsage += UpdateTokens;
 
             // 初始化
             InitializeAgentTab();
@@ -114,7 +111,6 @@ namespace SimpleAgent
             multiAgentOrchestrator.OnResetUserInputState += ActivationSendButton;
 
             routerAgent = agentFactory.CreateAgent<RouterAgent>(currentContext);
-
         }
 
         bool isStart = false;
@@ -257,8 +253,6 @@ namespace SimpleAgent
         /// </summary>
         public void ActivationSendButton()
         {
-            _isProcessing = false;
-
             // 恢复 UI 状态
             SendButton.Enabled = true;
             SendButton.Visible = true;
@@ -273,8 +267,6 @@ namespace SimpleAgent
         /// </summary>
         public void ActivationStopButton()
         {
-            _isProcessing = true;
-
             SendButton.Enabled = false;
             SendButton.Visible = false;
 
@@ -525,25 +517,25 @@ namespace SimpleAgent
                     // 只有当 usage.TotalTokens > 0 时，说明这是包含了使用统计的最终 Chunk
                     if (usage.TotalTokenCount > 0)
                     {
-                        PAllTokens.Text = $"{int.Parse(PAllTokens.Text) + usage.TotalTokenCount}";
-                        PInTokens.Text = $"{int.Parse(PInTokens.Text) + usage.InputTokenCount}";
-                        POutTokens.Text = $"{int.Parse(POutTokens.Text) + usage.OutputTokenCount}";
+                        PAllTokens.Text = $"{usage.TotalTokenCount}";
+                        PInTokens.Text = $"{usage.InputTokenCount}";
+                        POutTokens.Text = $"{usage.OutputTokenCount}";
                     }
                     break;
                 case AgentType.Developer:
                     if (usage.TotalTokenCount > 0)
                     {
-                        DAllTokens.Text = $"{int.Parse(DAllTokens.Text) + usage.TotalTokenCount}";
-                        DInTokens.Text = $"{int.Parse(DInTokens.Text) + usage.InputTokenCount}";
-                        DOutTokens.Text = $"{int.Parse(DOutTokens.Text) + usage.OutputTokenCount}";
+                        DAllTokens.Text = $"{usage.TotalTokenCount}";
+                        DInTokens.Text = $"{usage.InputTokenCount}";
+                        DOutTokens.Text = $"{usage.OutputTokenCount}";
                     }
                     break;
                 case AgentType.Reviewer:
                     if (usage.TotalTokenCount > 0)
                     {
-                        RAllTokens.Text = $"{int.Parse(RAllTokens.Text) + usage.TotalTokenCount}";
-                        RInTokens.Text = $"{int.Parse(RInTokens.Text) + usage.InputTokenCount}";
-                        ROutTokens.Text = $"{int.Parse(ROutTokens.Text) + usage.OutputTokenCount}";
+                        RAllTokens.Text = $"{usage.TotalTokenCount}";
+                        RInTokens.Text = $"{usage.InputTokenCount}";
+                        ROutTokens.Text = $"{usage.OutputTokenCount}";
                     }
                     break;
             }

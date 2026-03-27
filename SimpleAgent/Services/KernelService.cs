@@ -34,26 +34,23 @@ namespace SimpleAgent.Services
     /// </summary>
     public class KernelService : IKernelService
     {
-        /// <summary>http客户端</summary>
-        private HttpClient httpClient;
-
         private readonly IServiceProvider serviceProvider;
         private readonly ISettingsService settings;
+        private readonly IHttpClientFactory httpClientFactory;
 
-        public KernelService(IServiceProvider serviceProvider, ISettingsService settings)
+        public KernelService(IServiceProvider serviceProvider, IHttpClientFactory httpClientFactory, ISettingsService settings)
         {
             this.serviceProvider = serviceProvider;
             this.settings = settings;
-
-            if (string.IsNullOrEmpty(settings.Current.ApiBaseUrl)) throw new InvalidOperationException("必须填写API调用地址");
-
-            var handler = new HttpLoggingHandler(new HttpClientHandler());
-            httpClient = new(handler) { BaseAddress = new Uri($"{settings.Current.ApiBaseUrl}v1") };
+            this.httpClientFactory = httpClientFactory;
         }
 
         public Kernel BuildKernel(AgentContext? context)
         {
             var builder = Kernel.CreateBuilder();
+
+            var httpClient = httpClientFactory.CreateClient(Constant.HttpClientName);
+            httpClient.BaseAddress = new Uri($"{settings.Current.ApiBaseUrl}v1");
 
             // 自定义兼容端点
             builder.AddOpenAIChatCompletion(settings.Current.ModelId, settings.Current.ApiKey, httpClient: httpClient);
@@ -79,21 +76,6 @@ namespace SimpleAgent.Services
 
             // 构建Kernel
             return builder.Build();
-        }
-
-        /// <summary>
-        /// 设置工作目录
-        /// </summary>
-        private string SetWorkingDirectory(string directory)
-        {
-            // 确保工作目录本身是绝对路径，并且以目录分隔符结尾，防止 "C:\Work" 匹配到 "C:\Workspace"
-            var _workingDirectory = Path.GetFullPath(directory);
-            if (!_workingDirectory.EndsWith(Path.DirectorySeparatorChar.ToString()))
-            {
-                _workingDirectory += Path.DirectorySeparatorChar;
-            }
-            Directory.CreateDirectory(directory);
-            return _workingDirectory;
         }
     }
 }

@@ -12,7 +12,7 @@ using System.Threading.Tasks;
 namespace SimpleAgent.Services
 {
     /// <summary>工具调用事件委托</summary>
-    public delegate int ToolCallEventHandler(AgentType agentType, string? name, int line, string? arguments);
+    public delegate int ToolCallEventHandler(AgentType agentType, string? name, string? arguments, int line);
 
     /// <summary>
     /// 流式执行引擎接口
@@ -27,11 +27,11 @@ namespace SimpleAgent.Services
         /// <summary>工具调用事件</summary>
         event ToolCallEventHandler? OnToolCall;
 
-        /// <summary>Token刷新事件</summary>
-        event Action<AgentType, ChatTokenUsage?>? OnTokenUsage;
-
         /// <summary>流完成事件</summary>
         event Action<AgentType>? OnStreamCompleted;
+
+        /// <summary>Token刷新事件</summary>
+        event Action<AgentType, ChatTokenUsage?>? OnTokenUsage;
 
         /// <summary>
         /// 执行
@@ -49,8 +49,8 @@ namespace SimpleAgent.Services
     {
         public event Action<AgentType, string>? OnMessageReceived;
         public event ToolCallEventHandler? OnToolCall;
-        public event Action<AgentType, ChatTokenUsage?>? OnTokenUsage;
         public event Action<AgentType>? OnStreamCompleted;
+        public event Action<AgentType, ChatTokenUsage?>? OnTokenUsage;
 
         public async Task ExecuteStreamAsync(BaseAgent agent, AgentType agentType, CancellationToken cancellationToken, Func<bool> keepRunningCondition, Action? saveLogAction = null)
         {
@@ -64,7 +64,7 @@ namespace SimpleAgent.Services
             using var cts = new CancellationTokenSource();
             // 将内部的CTS与外部强制终止的CTS链接起来
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, cancellationToken);
-            
+
             bool isSaveLog = false;
 
             try
@@ -89,7 +89,7 @@ namespace SimpleAgent.Services
                             // 如果之前已经有未结束的调用（并行调用场景），在这里触发上一个调用的结束
                             if (currentCallId != null && OnToolCall != null)
                             {
-                                OnToolCall.Invoke(agentType, currentFunctionName, currentLine, argumentsBuilder.ToString());
+                                OnToolCall.Invoke(agentType, currentFunctionName, argumentsBuilder.ToString(), currentLine);
                             }
 
                             // 记录新调用的状态
@@ -99,7 +99,7 @@ namespace SimpleAgent.Services
 
                             if (OnToolCall != null)
                             {
-                                currentLine = OnToolCall.Invoke(agentType, functionCallUpdate.Name, -1, functionCallUpdate.Arguments);
+                                currentLine = OnToolCall.Invoke(agentType, functionCallUpdate.Name, functionCallUpdate.Arguments, -1);
                             }
                         }
 
@@ -108,7 +108,6 @@ namespace SimpleAgent.Services
                         {
                             argumentsBuilder.Append(functionCallUpdate.Arguments);
                         }
-                        break;
                     }
 
                     // 处理 Token 更新
@@ -132,7 +131,7 @@ namespace SimpleAgent.Services
                 // 结束时收尾最后一次 ToolCall
                 if ((currentCallId != null || currentLine >= 0) && OnToolCall != null)
                 {
-                    OnToolCall.Invoke(agentType, currentFunctionName, currentLine, argumentsBuilder.ToString());
+                    OnToolCall.Invoke(agentType, currentFunctionName, argumentsBuilder.ToString(), currentLine);
                 }
 
                 if (sb.Length > 0)

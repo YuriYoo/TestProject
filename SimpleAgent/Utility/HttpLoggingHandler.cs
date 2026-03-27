@@ -12,7 +12,8 @@ namespace SimpleAgent.Utility
     /// </summary>
     public class HttpLoggingHandler : DelegatingHandler
     {
-        public HttpLoggingHandler(HttpMessageHandler innerHandler) : base(innerHandler) { }
+        public HttpLoggingHandler() { }
+        //public HttpLoggingHandler(HttpMessageHandler innerHandler) : base(innerHandler) { }
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {

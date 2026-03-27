@@ -79,7 +79,7 @@ namespace SimpleAgent.Services
         {
             if (agentType == AgentType.Router)
             {
-                Trace.WriteLine("[警告] 路由智能体消息不需要显示");
+                Trace.WriteLine($"路由智能体用户消息: {message}");
                 return;
             }
 
@@ -92,7 +92,7 @@ namespace SimpleAgent.Services
         {
             if (agentType == AgentType.Router)
             {
-                Trace.WriteLine("[警告] 路由智能体消息不需要显示");
+                Trace.WriteLine($"路由智能体系统消息: {message}");
                 return;
             }
 
@@ -109,7 +109,7 @@ namespace SimpleAgent.Services
         {
             if (agentType == AgentType.Router)
             {
-                Trace.WriteLine("[警告] 路由智能体消息不需要显示");
+                Trace.WriteLine($"路由智能体结束消息");
                 return;
             }
 
@@ -121,7 +121,7 @@ namespace SimpleAgent.Services
         {
             if (agentType == AgentType.Router)
             {
-                Trace.WriteLine("[警告] 路由智能体消息不需要显示");
+                Trace.WriteLine($"路由智能体消息: {message}");
                 return;
             }
 
@@ -152,15 +152,16 @@ namespace SimpleAgent.Services
             }
         }
 
-        public int SendToolMessage(AgentType agentType, string message, int line = -1)
+        public int SendToolMessage(AgentType agentType, string? name, string? args, int line)
         {
+            string message = Utility.Utility.ToolMessageFormatter(name, line, args);
             if (string.IsNullOrEmpty(message))
             {
                 return line;
             }
             if (agentType == AgentType.Router)
             {
-                Trace.WriteLine("[警告] 路由智能体消息不需要显示");
+                Trace.WriteLine($"路由智能体工具消息: {message}");
                 return line;
             }
 

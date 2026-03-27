@@ -14,6 +14,7 @@ using SimpleAgent.Factory;
 using SimpleAgent.Plugins;
 using SimpleAgent.Reducer;
 using SimpleAgent.Services;
+using SimpleAgent.Utility;
 using static System.Windows.Forms.DataFormats;
 
 namespace SimpleAgent
@@ -40,8 +41,12 @@ namespace SimpleAgent
 
             // 配置 Serilog 规则
             Log.Logger = new LoggerConfiguration()
-                .MinimumLevel.Debug() // 设置最低记录级别
-                .WriteTo.Debug()    // Debug模式下输出信息到调试控制台
+                .MinimumLevel.Debug()
+                // Debug模式下输出信息到调试控制台
+                .WriteTo.Debug()
+                // 屏蔽 HttpClient 工厂底层的 Debug 和 Info 日志，只看警告和错误
+                .MinimumLevel.Override("Microsoft.Extensions.Http", Serilog.Events.LogEventLevel.Warning)
+                .MinimumLevel.Override("System.Net.Http.HttpClient", Serilog.Events.LogEventLevel.Warning)
                 .WriteTo.File(
                     path: "Logs/app_log_.txt",
                     rollingInterval: RollingInterval.Day, // 每天自动创建一个新文件
@@ -58,6 +63,10 @@ namespace SimpleAgent
             {
                 builder.AddSerilog(dispose: true);
             });
+
+            // 注册命名的 HttpClient 并绑定日志处理程序
+            services.AddTransient<HttpLoggingHandler>();
+            services.AddHttpClient(Constant.HttpClientName).AddHttpMessageHandler<HttpLoggingHandler>();
 
             // 注册智能体
             services.AddTransient<IWorkflowAgent, PlannerAgent>();
@@ -97,18 +106,11 @@ namespace SimpleAgent
             // 核心的事件解耦
             var engine = ServiceProvider.GetRequiredService<IStreamingExecutionEngine>();
             var chatUI = ServiceProvider.GetRequiredService<ChatUIService>();
-            
+
             // 把 UI 更新方法绑定到独立引擎的事件上，业务代码无需知道 UI 的存在
             engine.OnMessageReceived += chatUI.SendAIMessage;
             engine.OnStreamCompleted += chatUI.SendCompletedMessage;
-            engine.OnToolCall += (agentType, name, line, args) =>
-            {
-                string msg = Utility.Utility.ToolMessageFormatter(name, line, args);
-                return chatUI.SendToolMessage(agentType, msg, line);
-            };
-            // Token 更新
-            // 这边你可以在 MainForm 里订阅或者让 Orchestrator 中转
-            //engine.OnTokenUsage += orchestrator.UpdateTokens;
+            engine.OnToolCall += chatUI.SendToolMessage;
 
             try
             {

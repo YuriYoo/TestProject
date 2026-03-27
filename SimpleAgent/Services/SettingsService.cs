@@ -71,17 +71,19 @@ namespace SimpleAgent.Services
                     string json = File.ReadAllText(SettingsFilePath);
                     current = JsonConvert.DeserializeObject<AppSettings>(json) ?? new AppSettings();
                     FormatCorrection();
-                    return current;
                 }
                 else
                 {
                     logger.LogInformation("未找到设置文件，正在创建默认设置");
-                    Save();
                 }
             }
             catch (Exception ex)
             {
                 logger.LogWarning("加载设置失败，将会使用默认值: {msg}", ex.Message);
+            }
+            finally
+            {
+                Save();
             }
 
             // 返回默认设置
@@ -128,6 +130,21 @@ namespace SimpleAgent.Services
             {
                 current.ApiBaseUrl += '/';
             }
+        }
+
+        /// <summary>
+        /// 格式化文件夹路径
+        /// </summary>
+        private string NormalizedDirectoryPath(string directory)
+        {
+            // 确保工作目录本身是绝对路径，并且以目录分隔符结尾，防止 "C:\Work" 匹配到 "C:\Workspace"
+            var outDirectory = Path.GetFullPath(directory);
+            if (!outDirectory.EndsWith(Path.DirectorySeparatorChar.ToString()))
+            {
+                outDirectory += Path.DirectorySeparatorChar;
+            }
+            Directory.CreateDirectory(directory);
+            return outDirectory;
         }
     }
 
