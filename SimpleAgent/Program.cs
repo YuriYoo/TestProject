@@ -81,6 +81,7 @@ namespace SimpleAgent
             services.AddSingleton<IBackgroundService, Services.BackgroundService>();
             services.AddSingleton<IStreamingExecutionEngine, StreamingExecutionEngine>();
             services.AddSingleton<AgentContextRepository>();
+            services.AddSingleton<ConversationRepository>();
             services.AddTransient<MultiAgentOrchestrator>();
             services.AddSingleton<GPUStackClient>();
             services.AddSingleton<ChatUIService>();
