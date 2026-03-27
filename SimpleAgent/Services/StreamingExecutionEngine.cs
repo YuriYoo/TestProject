@@ -127,24 +127,24 @@ namespace SimpleAgent.Services
                         }
                     }
                 }
-
-                // 结束时收尾最后一次 ToolCall
-                if ((currentCallId != null || currentLine >= 0) && OnToolCall != null)
-                {
-                    OnToolCall.Invoke(agentType, currentFunctionName, argumentsBuilder.ToString(), currentLine);
-                }
-
-                if (sb.Length > 0)
-                {
-                    agent.AddAssistantMessage(sb.ToString());
-                }
-
-                OnStreamCompleted?.Invoke(agentType);
             }
             catch (OperationCanceledException)
             {
                 if (cancellationToken.IsCancellationRequested) throw;
             }
+
+            // 结束时收尾最后一次 ToolCall
+            if ((currentCallId != null || currentLine >= 0) && OnToolCall != null)
+            {
+                OnToolCall.Invoke(agentType, currentFunctionName, argumentsBuilder.ToString(), currentLine);
+            }
+
+            if (sb.Length > 0)
+            {
+                agent.AddAssistantMessage(sb.ToString());
+            }
+
+            OnStreamCompleted?.Invoke(agentType);
         }
     }
 }
