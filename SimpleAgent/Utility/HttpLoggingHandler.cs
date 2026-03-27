@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SimpleAgent.Filter
+namespace SimpleAgent.Utility
 {
     /// <summary>
     /// 创建一个拦截 HTTP 请求和响应的 Handler

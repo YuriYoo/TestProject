@@ -71,7 +71,7 @@ namespace SimpleAgent.Reducer
             summaryChat.AddUserMessage(conversationText);
 
             // 调用大模型生成摘要
-            var kernel = kernelService.BuildKernel(settingsService.Current.WorkingDirectory);
+            var kernel = kernelService.BuildKernel(null);
             var chatService = kernel.GetRequiredService<IChatCompletionService>();
             var summaryResult = await chatService.GetChatMessageContentAsync(summaryChat, cancellationToken: cancellationToken);
 

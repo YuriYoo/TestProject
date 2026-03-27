@@ -16,12 +16,10 @@ using System.Threading.Tasks;
 
 namespace SimpleAgent.Agents
 {
-	public class ReviewerAgent : BaseAgent, IWorkflowAgent
+    public class ReviewerAgent : BaseAgent, IWorkflowAgent
     {
-        public AgentType Type => AgentType.Reviewer;
-        private readonly IStreamingExecutionEngine _executionEngine;
         public const string NickName = "审查智能体";
-		private const string SystemPrompt = @"
+        private const string SystemPrompt = @"
 # Role
 你是一位极其严格的软件质量保证（QA）工程师。
 
@@ -37,29 +35,31 @@ namespace SimpleAgent.Agents
 - 【关键指令】如果所有需求均已满足，你必须调用 `pass_review` 函数。
 - 【关键指令】如果发现有遗漏的功能，或者开发者提交的总结中存在明显的逻辑风险，你必须调用 `fail_review` 函数，并在参数中清晰地列出“缺失了什么”或“哪里需要重做”，以便打回给开发者。";
 
-		public ReviewerAgent(IKernelService kernelService, ISettingsService settingsService, IStreamingExecutionEngine executionEngine, AgentContext context) : base(SystemPrompt)
+        public AgentType Type => AgentType.Reviewer;
+        private readonly IStreamingExecutionEngine executionEngine;
+
+        public ReviewerAgent(IKernelService kernelService, IStreamingExecutionEngine executionEngine, AgentContext context) : base(SystemPrompt)
         {
-            _executionEngine = executionEngine;
-            kernel = kernelService.BuildKernel(context.WorkingDirectory);
-            kernel.Plugins.AddFromObject(new WorkflowPlugin(context), "workflow");
+            this.executionEngine = executionEngine;
 
+            kernel = kernelService.BuildKernel(context);
             KernelFunction[] kernelFunctions = [
-				kernel.Plugins.GetFunction("file_system", "read_file"),
-				kernel.Plugins.GetFunction("file_system", "list_directory"),
-				kernel.Plugins.GetFunction("file_system", "path_exists"),
-				kernel.Plugins.GetFunction("file_system", "get_working_directory"),
-				kernel.Plugins.GetFunction("workflow", "pass_review"),
-				kernel.Plugins.GetFunction("workflow", "fail_review"),
-				kernel.Plugins.GetFunction("http_test", "send_http_request"),
-			];
+                kernel.Plugins.GetFunction("file_system", "read_file"),
+                kernel.Plugins.GetFunction("file_system", "list_directory"),
+                kernel.Plugins.GetFunction("file_system", "path_exists"),
+                kernel.Plugins.GetFunction("file_system", "get_working_directory"),
+                kernel.Plugins.GetFunction("workflow", "pass_review"),
+                kernel.Plugins.GetFunction("workflow", "fail_review"),
+                kernel.Plugins.GetFunction("http_test", "send_http_request"),
+            ];
 
-			chatCompletionService = kernel.GetRequiredService<IChatCompletionService>();
-			settings = new OpenAIPromptExecutionSettings
-			{
-				FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(kernelFunctions),
-				Temperature = 0.1,
-				Seed = ReviewerSeed < 0 ? seed : ReviewerSeed,
-			};
+            chatCompletionService = kernel.GetRequiredService<IChatCompletionService>();
+            settings = new OpenAIPromptExecutionSettings
+            {
+                FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(kernelFunctions),
+                Temperature = 0.1,
+                Seed = ReviewerSeed < 0 ? seed : ReviewerSeed,
+            };
 
             Log.Logger.Information("Reviewer初始化成功, Seed:{Seed}  Temperature:{Temperature}", settings.Seed, settings.Temperature);
         }
@@ -75,7 +75,7 @@ namespace SimpleAgent.Agents
             Log.Information("Reviewer 正在验收...");
 
             // 装载用户上下文
-            if (!context.IsImprove || context.IsChangePlan)
+            if (context.TakingRounds == 0 || context.IsChangePlan)
             {
                 AddUserMessage($"【以下为原计划】\n{context.DetailedPlan}\n\n【以下为开发者提交的摘要】\n{context.DeveloperSummary}");
             }
@@ -88,7 +88,7 @@ namespace SimpleAgent.Agents
             context.NextState = null;
 
             // 运行执行引擎，条件是：如果 NextState 被修改，说明工具被调用，流应当中断
-            await _executionEngine.ExecuteStreamAsync(this, Type, cancellationToken,
+            await executionEngine.ExecuteStreamAsync(this, Type, cancellationToken,
                 () => context.NextState == null,
                 () => Utility.Utility.ChatHistorySave(Type, chatHistory));
 

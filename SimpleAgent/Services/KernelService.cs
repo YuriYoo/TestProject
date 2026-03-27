@@ -1,18 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Microsoft.Agents.AI;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
-using System.Net.Http;
-using System.Runtime.CompilerServices;
 using SimpleAgent.Models;
 using SimpleAgent.Plugins;
-using Microsoft.Extensions.DependencyInjection;
-using SimpleAgent.Filter;
-using Microsoft.Extensions.Logging;
+using SimpleAgent.Utility;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
+using System.Runtime.CompilerServices;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace SimpleAgent.Services
 {
@@ -21,9 +22,9 @@ namespace SimpleAgent.Services
         /// <summary>
         /// 构建Kernel实例
         /// </summary>
-        /// <param name="directory">工作目录</param>
+        /// <param name="context">上下文</param>
         /// <returns></returns>
-        Kernel BuildKernel(string directory);
+        Kernel BuildKernel(AgentContext? context);
     }
 
     /// <summary>
@@ -34,49 +35,47 @@ namespace SimpleAgent.Services
     public class KernelService : IKernelService
     {
         /// <summary>http客户端</summary>
-        private HttpClient _httpClient;
+        private HttpClient httpClient;
 
         private readonly IServiceProvider serviceProvider;
-        private readonly ILogger<KernelService> logger;
         private readonly ISettingsService settings;
 
-        public KernelService(IServiceProvider serviceProvider, ILogger<KernelService> logger, ISettingsService settings)
+        public KernelService(IServiceProvider serviceProvider, ISettingsService settings)
         {
             this.serviceProvider = serviceProvider;
-            this.logger = logger;
             this.settings = settings;
 
             if (string.IsNullOrEmpty(settings.Current.ApiBaseUrl)) throw new InvalidOperationException("必须填写API调用地址");
 
             var handler = new HttpLoggingHandler(new HttpClientHandler());
-            _httpClient = new(handler) { BaseAddress = new Uri($"{settings.Current.ApiBaseUrl}v1") };
+            httpClient = new(handler) { BaseAddress = new Uri($"{settings.Current.ApiBaseUrl}v1") };
         }
 
-        public Kernel BuildKernel(string directory)
+        public Kernel BuildKernel(AgentContext? context)
         {
-            directory = SetWorkingDirectory(directory);
             var builder = Kernel.CreateBuilder();
 
             // 自定义兼容端点
-            builder.AddOpenAIChatCompletion(settings.Current.ModelId, settings.Current.ApiKey, httpClient: _httpClient);
+            builder.AddOpenAIChatCompletion(settings.Current.ModelId, settings.Current.ApiKey, httpClient: httpClient);
 
             // 将自定义的日志拦截器注册到服务中
             builder.Services.AddSingleton<IFunctionInvocationFilter, FunctionLoggingFilter>();
 
             // 注册工具
-            var httpTestPlugin = serviceProvider.GetRequiredService<HttpTestPlugin>();
-            var fileSystemPlugin = serviceProvider.GetRequiredService<FileSystemPlugin>();
-            var terminalPlugin = serviceProvider.GetRequiredService<TerminalPlugin>();
-            var subAgentPlugin = serviceProvider.GetRequiredService<SubAgentPlugin>();
+            if (context != null)
+            {
+                var httpTestPlugin = ActivatorUtilities.CreateInstance<HttpTestPlugin>(serviceProvider);
+                var fileSystemPlugin = ActivatorUtilities.CreateInstance<FileSystemPlugin>(serviceProvider, context);
+                var terminalPlugin = ActivatorUtilities.CreateInstance<TerminalPlugin>(serviceProvider, context);
+                var workflowPlugin = ActivatorUtilities.CreateInstance<WorkflowPlugin>(serviceProvider, context);
+                var subAgentPlugin = ActivatorUtilities.CreateInstance<SubAgentPlugin>(serviceProvider, context);
 
-            fileSystemPlugin.WorkingDirectory = directory;
-            terminalPlugin.WorkingDirectory = directory;
-            subAgentPlugin.WorkingDirectory = directory;
-
-            builder.Plugins.AddFromObject(httpTestPlugin, "http_test");
-            builder.Plugins.AddFromObject(fileSystemPlugin, "file_system");
-            builder.Plugins.AddFromObject(terminalPlugin, "terminal");
-            builder.Plugins.AddFromObject(subAgentPlugin, "sub_agent");
+                builder.Plugins.AddFromObject(httpTestPlugin, "http_test");
+                builder.Plugins.AddFromObject(fileSystemPlugin, "file_system");
+                builder.Plugins.AddFromObject(terminalPlugin, "terminal");
+                builder.Plugins.AddFromObject(workflowPlugin, "workflow");
+                builder.Plugins.AddFromObject(subAgentPlugin, "sub_agent");
+            }
 
             // 构建Kernel
             return builder.Build();

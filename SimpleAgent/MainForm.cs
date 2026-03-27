@@ -99,9 +99,6 @@ namespace SimpleAgent
             };
 
             SendButton.Click += SendButton_Click;
-
-            // 模拟新建会话
-            CreateConversation();
         }
 
         /// <summary>
@@ -112,10 +109,7 @@ namespace SimpleAgent
             var guid = Guid.NewGuid();
             currentContext = await contextRepository.GetOrCreateContextAsync(guid);
 
-            if (multiAgentOrchestrator != null)
-            {
-                multiAgentOrchestrator.OnResetUserInputState -= ActivationSendButton;
-            }
+            multiAgentOrchestrator?.OnResetUserInputState -= ActivationSendButton;
             multiAgentOrchestrator = orchestratorFactory.CreateOrchestrator(currentContext);
             multiAgentOrchestrator.OnResetUserInputState += ActivationSendButton;
 
@@ -166,9 +160,9 @@ namespace SimpleAgent
 
             // 判断是否需要进行规划
             var cts = new CancellationTokenSource();
-            routerAgent.Reset();
-
             WorkflowState state;
+            currentContext.OriginalRequest = text;
+
             do
             {
                 state = await routerAgent.ExecuteAsync(currentContext, cts.Token);
@@ -623,17 +617,8 @@ namespace SimpleAgent
 
         private async void toolStripMenuItem1_Click(object sender, EventArgs e)
         {
-            var (confirm, indices, options) = await chatUIService.ShowQuestion("测试问题", QuestionMode.NoSelect,
-            [
-                "选项一",
-                "选项二",
-                "选项三",
-                "选项四",
-                "选项五",
-                "选项六",
-            ]);
-            Trace.WriteLine(string.Join(',', indices));
-            Trace.WriteLine(string.Join(',', options));
+            // 模拟新建会话
+            CreateConversation();
         }
     }
 }

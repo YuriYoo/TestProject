@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.SemanticKernel;
 using System.Diagnostics;
 
-namespace SimpleAgent.Filter
+namespace SimpleAgent.Utility
 {
     public class FunctionLoggingFilter : IFunctionInvocationFilter
     {
@@ -17,7 +17,7 @@ namespace SimpleAgent.Filter
             var functionName = context.Function.Name;
             var arguments = string.Join(", ", context.Arguments.Select(a => $"{a.Key}: {a.Value}"));
 
-            Trace.WriteLine($"[日志 - 开始调用] {pluginName}.{functionName}, 调用参数: {Utility.Utility.TruncateByChars(arguments, 40)}");
+            Trace.WriteLine($"[日志 - 开始调用] {pluginName}.{functionName}, 调用参数: {Utility.TruncateByChars(arguments, 40)}");
 
             var stopwatch = Stopwatch.StartNew();
             try
@@ -29,7 +29,7 @@ namespace SimpleAgent.Filter
                 // 执行后的拦截 (Post-execution)
                 var result = context.Result?.GetValue<object>();
 
-                Trace.WriteLine($"[日志 - 调用成功] 耗时: {stopwatch.ElapsedMilliseconds}ms, 返回结果: {Utility.Utility.TruncateByChars(result?.ToString() ?? "", 40)}");
+                Trace.WriteLine($"[日志 - 调用成功] 耗时: {stopwatch.ElapsedMilliseconds}ms, 返回结果: {Utility.TruncateByChars(result?.ToString() ?? "", 40)}");
             }
             catch (Exception ex)
             {

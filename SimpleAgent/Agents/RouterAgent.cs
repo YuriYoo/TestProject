@@ -17,8 +17,6 @@ namespace SimpleAgent.Agents
 {
     public class RouterAgent : BaseAgent, IWorkflowAgent
     {
-        public AgentType Type => AgentType.Router;
-        private readonly IStreamingExecutionEngine _executionEngine;
         public const string NickName = "路由智能体";
         private const string SystemPrompt = @"
 # Role
@@ -37,12 +35,14 @@ namespace SimpleAgent.Agents
 3. 你只需要调用工具，不要输出任何解释、不要与用户打招呼、不要与用户对话。
 4. 你必须调用以下两个函数之一，且只能调用一次： `route_to_planner` 或 `route_to_developer` ";
 
-        public RouterAgent(IKernelService kernelService, ISettingsService settingsService, IStreamingExecutionEngine executionEngine, AgentContext context) : base(SystemPrompt)
-        {
-            _executionEngine = executionEngine;
-            kernel = kernelService.BuildKernel(context.WorkingDirectory);
-            kernel.Plugins.AddFromObject(new WorkflowPlugin(context), "workflow");
+        public AgentType Type => AgentType.Router;
+        private readonly IStreamingExecutionEngine executionEngine;
 
+        public RouterAgent(IKernelService kernelService, IStreamingExecutionEngine executionEngine, AgentContext context) : base(SystemPrompt)
+        {
+            this.executionEngine = executionEngine;
+
+            kernel = kernelService.BuildKernel(context);
             KernelFunction[] kernelFunctions = [
                 kernel.Plugins.GetFunction("workflow", "route_to_developer"),
                 kernel.Plugins.GetFunction("workflow", "route_to_planner"),
@@ -69,15 +69,21 @@ namespace SimpleAgent.Agents
         {
             Log.Information("Router 正在路由...");
 
-            // 装载用户上下文
-            Reset();
-            AddUserMessage($"用户输入: {context.OriginalRequest}");
+            if (context.ThinkingRounds == 0)
+            {
+                Reset();
+                AddUserMessage($"用户输入: {context.OriginalRequest}");
+            }
+            else
+            {
+                AddUserMessage($"你必须根据你的判断调用以下两个函数之一： `route_to_planner` 或 `route_to_developer` ");
+            }
 
             // 清空 NextState，等待模型执行结果
             context.NextState = null;
 
             // 运行执行引擎，条件是：如果 NextState 被修改，说明工具被调用，流应当中断
-            await _executionEngine.ExecuteStreamAsync(this, Type, cancellationToken,
+            await executionEngine.ExecuteStreamAsync(this, Type, cancellationToken,
                 () => context.NextState == null,
                 () => Utility.Utility.ChatHistorySave(Type, chatHistory));
 

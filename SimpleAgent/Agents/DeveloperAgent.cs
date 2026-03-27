@@ -19,10 +19,6 @@ namespace SimpleAgent.Agents
 {
     public class DeveloperAgent : BaseAgent, IWorkflowAgent
     {
-        public AgentType Type => AgentType.Developer;
-        private readonly IStreamingExecutionEngine _executionEngine;
-        private readonly ISettingsService settingsService;
-        private readonly IChatHistoryReducer historyReducer;
         public const string NickName = "开发智能体";
         private const string SystemPrompt = @"
 # Role
@@ -45,17 +41,20 @@ namespace SimpleAgent.Agents
 - 【关键指令】合理利用子代理，你需要将任务分给多个子代理，不要让一子代理负责所有任务。
 - 【关键指令】只有当所有任务都已经完成，且你在本地运行的编译和测试全部通过后，你才可以停止。
 - 【关键指令】当你停止时才允许且必须调用 `submit_for_review` 函数，并在参数中附上你修改了哪些文件的简要总结。";
-
         // - 【绝对禁止】你作为管理者，绝对不能直接使用 `write_file`、`edit_file`、`append_file` 来编写主体业务代码！
+
+        public AgentType Type => AgentType.Developer;
+        private readonly IStreamingExecutionEngine executionEngine;
+        private readonly ISettingsService settingsService;
+        private readonly IChatHistoryReducer historyReducer;
 
         public DeveloperAgent(IKernelService kernelService, IChatHistoryReducer historyReducer, ISettingsService settingsService, IStreamingExecutionEngine executionEngine, AgentContext context) : base(SystemPrompt)
         {
-            _executionEngine = executionEngine;
+            this.executionEngine = executionEngine;
             this.historyReducer = historyReducer;
             this.settingsService = settingsService;
-            kernel = kernelService.BuildKernel(context.WorkingDirectory);
-            kernel.Plugins.AddFromObject(new WorkflowPlugin(context), "workflow");
 
+            kernel = kernelService.BuildKernel(context);
             KernelFunction[] kernelFunctions = [
                 kernel.Plugins.GetFunction("sub_agent", "delegate_sub_task"),
                 kernel.Plugins.GetFunction("file_system", "read_file"),
@@ -83,7 +82,7 @@ namespace SimpleAgent.Agents
                 Seed = DeveloperSeed < 0 ? seed : DeveloperSeed,
             };
 
-            Log.Logger.Information("Developer初始化成功, Seed:{Seed}  Temperature:{Temperature}", settings.Seed, settings.Temperature);
+            Log.Information("Developer初始化成功, Seed:{Seed}  Temperature:{Temperature}", settings.Seed, settings.Temperature);
         }
 
         /// <summary>
@@ -95,16 +94,9 @@ namespace SimpleAgent.Agents
         public async Task<WorkflowState> ExecuteAsync(AgentContext context, CancellationToken cancellationToken)
         {
             Log.Information("Developer 正在编写和测试代码...");
-            context.DevCycleCount++;
-
-            if (context.DevCycleCount > settingsService.Current.MaxDevCycle)
-            {
-                Log.Information("已超过最大开发轮次，强制中止！");
-                throw new Exception("开发-测试循环次数超限，强制中止！");
-            }
 
             // 首次发送的为执行计划, 后续的为 Reviewer 修改
-            if (context.DevCycleCount == 1)
+            if (context.ThinkingRounds == 0)
             {
                 // 如果没有计划(用户直接向Coder发起请求)
                 if (string.IsNullOrEmpty(context.DetailedPlan))
@@ -113,7 +105,7 @@ namespace SimpleAgent.Agents
                     AddUserMessage(context.DetailedPlan);
                 }
                 // 如果有计划, 且已经是完善阶段了
-                else if (context.IsImprove)
+                else if (context.TakingRounds > 0)
                 {
                     // 如果计划变更了
                     if (context.IsChangePlan)
@@ -147,7 +139,7 @@ namespace SimpleAgent.Agents
             context.NextState = null;
 
             // 运行执行引擎，条件是：如果 NextState 被修改，说明工具被调用，流应当中断
-            await _executionEngine.ExecuteStreamAsync(this, Type, cancellationToken,
+            await executionEngine.ExecuteStreamAsync(this, Type, cancellationToken,
                 () => context.NextState == null,
                 () => Utility.Utility.ChatHistorySave(Type, chatHistory));
 

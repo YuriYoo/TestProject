@@ -44,11 +44,11 @@ namespace SimpleAgent.Models
         /// <summary>Http请求超时时间</summary>
         public int HttpTimeout { get; set; } = 15000;
 
-        /// <summary>最大开发轮次</summary>
-        public int MaxDevCycle { get; set; } = 100;
+        /// <summary>最大思考轮次</summary>
+        public int MaxThinkingRounds { get; set; } = 100;
 
         /// <summary>子代理最大开发轮次</summary>
-        public int SubMaxDevCycle { get; set; } = 100;
+        public int SubMaxThinkingRounds { get; set; } = 100;
 
         /// <summary>AI输出最大Token数</summary>
         public int MaxTokens { get; set; } = 128000;

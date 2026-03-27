@@ -19,8 +19,6 @@ namespace SimpleAgent.Agents
 {
     public class PlannerAgent : BaseAgent, IWorkflowAgent
     {
-        public AgentType Type => AgentType.Planner;
-        private readonly IStreamingExecutionEngine _executionEngine;
         public const string NickName = "规划智能体";
         private const string SystemPrompt = @"
 # Role
@@ -42,12 +40,14 @@ namespace SimpleAgent.Agents
 - 你可以向用户询问是否满意计划，但是不需要向用户说明调用什么函数。
 - 【关键指令】仅当用户明确表示“计划没问题”、“可以开始开发”或类似同意的表述时，你才可以调用 `finalize_plan` 函数，并将最终版的 Markdown 计划作为参数传入，此时不需要回复用户任何文字。";
 
-        public PlannerAgent(IKernelService kernelService, ISettingsService settingsService, IStreamingExecutionEngine executionEngine, AgentContext context) : base(SystemPrompt)
-        {
-            _executionEngine = executionEngine;
-            kernel = kernelService.BuildKernel(context.WorkingDirectory);
-            kernel.Plugins.AddFromObject(new WorkflowPlugin(context), "workflow");
+        public AgentType Type => AgentType.Planner;
+        private readonly IStreamingExecutionEngine executionEngine;
 
+        public PlannerAgent(IKernelService kernelService, IStreamingExecutionEngine executionEngine, AgentContext context) : base(SystemPrompt)
+        {
+            this.executionEngine = executionEngine;
+
+            kernel = kernelService.BuildKernel(context);
             KernelFunction[] kernelFunctions = [
                 kernel.Plugins.GetFunction("file_system", "read_file"),
                 kernel.Plugins.GetFunction("file_system", "list_directory"),
@@ -64,7 +64,7 @@ namespace SimpleAgent.Agents
                 Seed = PlannerSeed < 0 ? seed : PlannerSeed,
             };
 
-            Log.Logger.Information("Planner初始化成功, Seed:{Seed}  Temperature:{Temperature}", settings.Seed, settings.Temperature);
+            Log.Information("Planner初始化成功, Seed:{Seed}  Temperature:{Temperature}", settings.Seed, settings.Temperature);
         }
 
         /// <summary>
@@ -82,7 +82,7 @@ namespace SimpleAgent.Agents
             {
                 AddUserMessage(context.OriginalRequest);
             }
-            else if (context.IsImprove)
+            else if (context.TakingRounds > 0)
             {
                 context.IsChangePlan = true;
                 AddUserMessage(context.OriginalRequest);
@@ -92,7 +92,7 @@ namespace SimpleAgent.Agents
             context.NextState = null;
 
             // 运行执行引擎，条件是：如果 NextState 被修改，说明工具被调用，流应当中断
-            await _executionEngine.ExecuteStreamAsync(this, Type, cancellationToken,
+            await executionEngine.ExecuteStreamAsync(this, Type, cancellationToken,
                 () => context.NextState == null,
                 () => Utility.Utility.ChatHistorySave(Type, chatHistory));
 

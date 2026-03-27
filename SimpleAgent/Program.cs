@@ -34,9 +34,9 @@ namespace SimpleAgent
             Application.SetHighDpiMode(HighDpiMode.SystemAware);
 
             Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
-            Application.ThreadException += new ThreadExceptionEventHandler(Application_ThreadException);
-            AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(CurrentDomain_UnhandledException);
-            AppDomain.CurrentDomain.ProcessExit += new EventHandler(CurrentDomain_ProcessExit);
+            //Application.ThreadException += new ThreadExceptionEventHandler(Application_ThreadException);
+            //AppDomain.CurrentDomain.UnhandledException += new UnhandledExceptionEventHandler(CurrentDomain_UnhandledException);
+            //AppDomain.CurrentDomain.ProcessExit += new EventHandler(CurrentDomain_ProcessExit);
 
             // 配置 Serilog 规则
             Log.Logger = new LoggerConfiguration()
@@ -64,6 +64,7 @@ namespace SimpleAgent
             services.AddTransient<IWorkflowAgent, DeveloperAgent>();
             services.AddTransient<IWorkflowAgent, ReviewerAgent>();
             services.AddTransient<IWorkflowAgent, RouterAgent>();
+            services.AddTransient<IWorkflowAgent, SubDeveloperAgent>();
 
             // 注册窗体和业务类
             services.AddSingleton<ISettingsService, SettingsService>();
@@ -81,10 +82,10 @@ namespace SimpleAgent
             services.AddSingleton<IOrchestratorFactory, OrchestratorFactory>();
 
             // 注册插件
-            services.AddTransient<TerminalPlugin>();
             services.AddTransient<FileSystemPlugin>();
-            services.AddTransient<WorkflowPlugin>();
+            services.AddTransient<TerminalPlugin>();
             services.AddTransient<HttpTestPlugin>();
+            services.AddTransient<WorkflowPlugin>();
             services.AddTransient<SubAgentPlugin>();
 
             // 上下文裁剪
@@ -96,8 +97,7 @@ namespace SimpleAgent
             // 核心的事件解耦
             var engine = ServiceProvider.GetRequiredService<IStreamingExecutionEngine>();
             var chatUI = ServiceProvider.GetRequiredService<ChatUIService>();
-            var orchestrator = ServiceProvider.GetRequiredService<MultiAgentOrchestrator>();
-
+            
             // 把 UI 更新方法绑定到独立引擎的事件上，业务代码无需知道 UI 的存在
             engine.OnMessageReceived += chatUI.SendAIMessage;
             engine.OnStreamCompleted += chatUI.SendCompletedMessage;

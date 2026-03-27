@@ -17,18 +17,13 @@ namespace SimpleAgent.Plugins
     /// </summary>
     public class HttpTestPlugin
     {
-        private readonly ILogger<HttpTestPlugin> logger;
+        private readonly HttpClient httpClient;
         private readonly ISettingsService settings;
 
-        private readonly HttpClient _httpClient;
-
-        public HttpTestPlugin(ILogger<HttpTestPlugin> logger, ISettingsService settings)
+        public HttpTestPlugin(ISettingsService settings)
         {
-            this.logger = logger;
             this.settings = settings;
-
-            // 复用 HttpClient 以提高性能，并设置严格的超时时间，防止被死锁的服务卡住
-            _httpClient = new HttpClient
+            httpClient = new()
             {
                 Timeout = TimeSpan.FromMilliseconds(settings.Current.HttpTimeout)
             };
@@ -93,7 +88,7 @@ namespace SimpleAgent.Plugins
                 }
 
                 // 发送请求
-                using var response = await _httpClient.SendAsync(request);
+                using var response = await httpClient.SendAsync(request);
 
                 // 读取响应体
                 string responseBody = await response.Content.ReadAsStringAsync();

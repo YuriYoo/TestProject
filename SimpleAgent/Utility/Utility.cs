@@ -237,6 +237,10 @@ namespace SimpleAgent.Utility
                     outstr = string.Empty;
                     break;
 
+                case "sub_workflow-finish_subtask":
+                    outstr = string.Empty;
+                    break;
+
                 default:
                     if (name != null && name.StartsWith("workflow-"))
                     {

@@ -46,29 +46,31 @@ namespace SimpleAgent.Services
     public class MultiAgentOrchestrator
     {
         private readonly ILogger<MultiAgentOrchestrator> logger;
+        private readonly ISettingsService settingsService;
 
         /// <summary>注册状态与 Agent 的映射字典</summary>
-        private readonly Dictionary<WorkflowState, IWorkflowAgent> _agentPipeline;
-        private readonly AgentContext _context = new();
+        private readonly Dictionary<WorkflowState, IWorkflowAgent> agentPipeline;
+        private readonly AgentContext context = new();
 
         /// <summary>用户输入</summary>
-        private TaskCompletionSource<string>? _userInputTcs;
+        private TaskCompletionSource<string>? userInputTcs;
 
         /// <summary>全局停止</summary>
-        private CancellationTokenSource? _workflowCts;
+        private CancellationTokenSource? workflowCts;
 
         /// <summary>重置用户输入状态事件</summary>
         public event Action? OnResetUserInputState;
 
-        public MultiAgentOrchestrator(ILogger<MultiAgentOrchestrator> logger, IAgentFactory agentFactory, AgentContext context)
+        public MultiAgentOrchestrator(ILogger<MultiAgentOrchestrator> logger, ISettingsService settingsService, IAgentFactory agentFactory, AgentContext context)
         {
             this.logger = logger;
-            this._context = context;
+            this.context = context;
+            this.settingsService = settingsService;
 
             var pa = agentFactory.CreateAgent<PlannerAgent>(context);
             var da = agentFactory.CreateAgent<DeveloperAgent>(context);
             var ra = agentFactory.CreateAgent<ReviewerAgent>(context);
-            _agentPipeline = new()
+            agentPipeline = new()
             {
                 { WorkflowState.Planning, pa },
                 { WorkflowState.Developing, da },
@@ -81,7 +83,7 @@ namespace SimpleAgent.Services
         /// </summary>
         public void StopWorkflow()
         {
-            _workflowCts?.Cancel();
+            workflowCts?.Cancel();
         }
 
         /// <summary>
@@ -91,9 +93,9 @@ namespace SimpleAgent.Services
         public void ProvideUserInput(string userInput)
         {
             // 如果当前正在等待用户输入，则将用户的内容设置进去，这会触发 await 后的代码继续执行
-            if (_userInputTcs != null && !_userInputTcs.Task.IsCompleted)
+            if (userInputTcs != null && !userInputTcs.Task.IsCompleted)
             {
-                _userInputTcs.TrySetResult(userInput);
+                userInputTcs.TrySetResult(userInput);
             }
         }
 
@@ -104,62 +106,72 @@ namespace SimpleAgent.Services
         /// <returns></returns>
         public async Task RunWorkflowAsync(string userInput, WorkflowState startState)
         {
-            _context.OriginalRequest = userInput;
-            _context.CurrentState = startState;
-            _context.DeveloperSummary = string.Empty;
-            _context.ReviewerFeedback = string.Empty;
-            _context.DevCycleCount = 0;
+            context.OriginalRequest = userInput;
+            context.CurrentState = startState;
+            context.DeveloperSummary = string.Empty;
+            context.ReviewerFeedback = string.Empty;
+            context.ThinkingRounds = 0;
 
-            _workflowCts = new CancellationTokenSource();
+            workflowCts = new CancellationTokenSource();
 
             try
             {
-                while (_context.CurrentState != WorkflowState.Idle && _context.CurrentState != WorkflowState.Completed)
+                while (context.CurrentState != WorkflowState.Idle && context.CurrentState != WorkflowState.Completed)
                 {
-                    logger.LogInformation("进入节点: {state}", _context.CurrentState);
-                    if (_agentPipeline.TryGetValue(_context.CurrentState, out var currentAgent))
+                    if (context.ThinkingRounds > settingsService.Current.MaxThinkingRounds)
                     {
-                        var returnedState = await currentAgent.ExecuteAsync(_context, _workflowCts.Token);
+                        logger.LogWarning("已超过最大开发轮次，强制中止！");
+                        workflowCts.Cancel();
+                        break;
+                    }
+
+                    logger.LogInformation("进入节点: {state}", context.CurrentState);
+                    if (agentPipeline.TryGetValue(context.CurrentState, out var currentAgent))
+                    {
+                        var returnedState = await currentAgent.ExecuteAsync(context, workflowCts.Token);
 
                         // 状态没有推进，意味着模型正在等待用户的对话补充
-                        if (returnedState == _context.CurrentState)
+                        if (returnedState == context.CurrentState)
                         {
                             if (returnedState == WorkflowState.Planning)
                             {
                                 logger.LogInformation("等待用户输入反馈...");
                                 OnResetUserInputState?.Invoke();
-                                _userInputTcs = new TaskCompletionSource<string>();
-                                string userFeedback = await _userInputTcs.Task;
-                                _context.OriginalRequest = userFeedback;
+                                userInputTcs = new TaskCompletionSource<string>();
+                                string userFeedback = await userInputTcs.Task;
+                                context.OriginalRequest = userFeedback;
                             }
+
+                            context.ThinkingRounds++;
                         }
                         else
                         {
-                            _context.CurrentState = returnedState;
+                            context.CurrentState = returnedState;
+                            context.ThinkingRounds = 0;
                         }
                     }
                     else
                     {
-                        throw new InvalidOperationException($"无法处理状态: {_context.CurrentState}");
+                        throw new InvalidOperationException($"无法处理状态: {context.CurrentState}");
                     }
-                    logger.LogInformation("退出节点: {state}", _context.CurrentState);
+                    logger.LogInformation("退出节点: {state}", context.CurrentState);
                 }
             }
             catch (OperationCanceledException)
             {
-                // 捕获到手动终止
-                _context.CurrentState = WorkflowState.Idle;
-                logger.LogInformation("用户手动终止了工作流。");
+                // 捕获到终止
+                context.CurrentState = WorkflowState.Idle;
+                logger.LogInformation("强行终止了工作流。");
                 //chatUIService.SendSystemMessage(AgentType.System, "[系统通知] 任务已被手动强制终止。");
             }
             finally
             {
-                _workflowCts?.Dispose();
-                _workflowCts = null;
+                workflowCts?.Dispose();
+                workflowCts = null;
             }
 
-            _context.IsImprove = true;
-            _context.IsChangePlan = false;
+            context.TakingRounds++;
+            context.IsChangePlan = false;
             logger.LogInformation("本轮任务已全部处理完毕，等待下一次用户输入。");
         }
     }

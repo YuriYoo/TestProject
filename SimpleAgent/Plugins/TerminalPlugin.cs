@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
+using SimpleAgent.Models;
 using SimpleAgent.Services;
 using SimpleAgent.Utility;
 using System;
@@ -14,21 +15,18 @@ namespace SimpleAgent.Plugins
 {
     public class TerminalPlugin
     {
-        /// <summary>工作目录</summary>
-        public string WorkingDirectory { get; set; } = string.Empty;
-
-        private readonly ILogger<TerminalPlugin> logger;
         private readonly ISettingsService settings;
         private readonly IBackgroundService backgroundService;
+        private readonly AgentContext context;
 
         /// <summary>定义 Windows 危险命令黑名单</summary>
         private readonly string[] blacklistedCommands = ["rmdir /s /q", "del /f /s /q"];
         //private readonly string[] blacklistedCommands = { "rmdir ", "rd ", "del ", "format ", "diskpart" };
 
-        public TerminalPlugin(ILogger<TerminalPlugin> logger, ISettingsService settings, IBackgroundService backgroundService)
+        public TerminalPlugin(ISettingsService settings, IBackgroundService backgroundService, AgentContext context)
         {
-            this.logger = logger;
             this.settings = settings;
+            this.context = context;
             this.backgroundService = backgroundService;
         }
 
@@ -38,7 +36,7 @@ namespace SimpleAgent.Plugins
             [Description("要执行的完整启动命令，例如 'dotnet run'")] string command,
             [Description("为你启动的这个服务起一个简短的英文标识符（如 'web-api', 'frontend'），用于后续停止服务")] string serviceId)
         {
-            return await backgroundService.StartService(command, serviceId, WorkingDirectory);
+            return await backgroundService.StartService(command, serviceId, context.WorkingDirectory);
         }
 
         [KernelFunction("stop_background_service")]
@@ -74,7 +72,7 @@ namespace SimpleAgent.Plugins
             try
             {
                 var sb = new StringBuilder();
-                using var process = new Process { StartInfo = BackgroundService.CreateProcessStartInfo(command, WorkingDirectory) };
+                using var process = new Process { StartInfo = BackgroundService.CreateProcessStartInfo(command, context.WorkingDirectory) };
                 if (process == null) return "[错误] 无法启动命令行进程。";
                 process.Start();
 

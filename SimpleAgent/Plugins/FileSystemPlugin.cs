@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
+using SimpleAgent.Models;
 using SimpleAgent.Services;
 using System;
 using System.Collections.Generic;
@@ -17,16 +18,11 @@ namespace SimpleAgent.Plugins
     /// </summary>
     public class FileSystemPlugin
     {
-        /// <summary>工作目录</summary>
-        public string WorkingDirectory { get; set; } = string.Empty;
+        private readonly AgentContext context;
 
-        private readonly ILogger<FileSystemPlugin> logger;
-        private readonly ISettingsService settings;
-
-        public FileSystemPlugin(ILogger<FileSystemPlugin> logger, ISettingsService settings)
+        public FileSystemPlugin(AgentContext context)
         {
-            this.logger = logger;
-            this.settings = settings;
+            this.context = context;
         }
 
         /// <summary>
@@ -61,7 +57,7 @@ namespace SimpleAgent.Plugins
         {
             try
             {
-                string fullPath = string.IsNullOrEmpty(directoryPath) ? WorkingDirectory : ResolvePath(directoryPath);
+                string fullPath = string.IsNullOrEmpty(directoryPath) ? context.WorkingDirectory : ResolvePath(directoryPath);
                 if (!Directory.Exists(fullPath)) return $"[错误] 目录不存在: {fullPath}";
 
                 var sb = new StringBuilder();
@@ -84,7 +80,7 @@ namespace SimpleAgent.Plugins
                 // 空目录
                 if (len == sb.Length)
                 {
-                    if (WorkingDirectory.StartsWith(fullPath, StringComparison.OrdinalIgnoreCase))
+                    if (context.WorkingDirectory.StartsWith(fullPath, StringComparison.OrdinalIgnoreCase))
                     {
                         sb.AppendLine("当前目录为工作目录，且没有包含任何文件");
                     }
@@ -279,7 +275,7 @@ namespace SimpleAgent.Plugins
         /// </summary>
         [KernelFunction("get_working_directory")]
         [Description("获取当前AI操作的工作目录路径。")]
-        public string GetWorkingDirectory() => $"当前工作目录: {WorkingDirectory}";
+        public string GetWorkingDirectory() => $"当前工作目录: {context.WorkingDirectory}";
 
         /// <summary>
         /// 解析路径：如果是相对路径则基于工作目录，绝对路径则直接使用
@@ -289,12 +285,12 @@ namespace SimpleAgent.Plugins
         private string ResolvePath(string path)
         {
             // 获取合并后的绝对路径（自动处理 ../ 等相对符号）
-            string fullPath = Path.IsPathRooted(path) ? Path.GetFullPath(path) : Path.GetFullPath(Path.Combine(WorkingDirectory, path));
+            string fullPath = Path.IsPathRooted(path) ? Path.GetFullPath(path) : Path.GetFullPath(Path.Combine(context.WorkingDirectory, path));
             string checkPath = fullPath;
             if (!checkPath.EndsWith(Path.DirectorySeparatorChar.ToString())) checkPath += Path.DirectorySeparatorChar;
 
             // 验证最终路径是否依然在工作目录内部
-            if (!checkPath.StartsWith(WorkingDirectory, StringComparison.OrdinalIgnoreCase))
+            if (!checkPath.StartsWith(context.WorkingDirectory, StringComparison.OrdinalIgnoreCase))
             {
                 throw new UnauthorizedAccessException($"安全拦截：禁止越权访问工作目录之外的路径 ({fullPath})");
             }
