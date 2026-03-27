@@ -20,7 +20,7 @@ namespace SimpleAgent.Renderer
 		private Brush itemBackColorBrush = Brushes.Transparent;
 
 		/// <summary>选中时背景画刷</summary>
-		private Brush itemSelectedBackColorBrush = Brushes.Gainsboro;
+		private Brush itemSelectedBackColorBrush = Brushes.AliceBlue;
 
 		/// <summary>按下状态的边框画笔</summary>
 		private Pen pressedBorderPen = Pens.Gray;

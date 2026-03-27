@@ -59,7 +59,8 @@ namespace SimpleAgent.Plugins
         [Description("在 Windows 命令行 (cmd) 中执行终端命令。可用于检测软件环境、编译代码 (如 dotnet build)、运行测试 (如 dotnet test)、或执行脚本。")]
         public async Task<string> ExecuteCommandAsync(
             [Description("需要执行的完整 CMD 命令，例如 'dotnet test' 或 'python script.py'，如果需要长时间运行请使用 'start_background_service' 工具")] string command,
-            [Description("运行命令的超时时间(毫秒)，防止命令无法停止时把你阻塞住，默认 10000 毫秒")] int timeout = 10000)
+            [Description("运行命令的超时时间(毫秒)，防止命令无法停止时把你阻塞住，默认 10000 毫秒")] int timeout = 10000,
+            CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(command)) return "[错误] 命令不能为空。";
 
@@ -82,18 +83,26 @@ namespace SimpleAgent.Plugins
 
                 // 使用 CancellationToken 实现异步超时控制
                 var time = timeout > 0 ? Math.Max(timeout, settings.Current.TerminalTimeout) : settings.Current.TerminalTimeout;
-                using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(timeout));
+                using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMilliseconds(timeout));
+                // 链接全局取消和超时取消
+                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, cancellationToken);
 
                 try
                 {
                     // 异步等待进程退出，不会阻塞线程
-                    await process.WaitForExitAsync(cts.Token);
+                    await process.WaitForExitAsync(linkedCts.Token);
                 }
                 catch (OperationCanceledException)
                 {
-                    // 超时触发，强制结束进程树 (包含可能衍生出的子进程)
-                    process.Kill(true);
-                    return $"[错误] 命令运行超过了{timeout}ms, 已自动终止。";
+                    // 增加 try-catch 包裹 Kill，防止进程正好在这一瞬间自然退出导致报错
+                    try
+                    {
+                        // 触发强制结束进程树 (包含可能衍生出的子进程)
+                        if (!process.HasExited) process.Kill(true);
+                    }
+                    catch { }
+
+                    return cancellationToken.IsCancellationRequested ? "[错误] 命令已被用户手动终止。" : $"[错误] 命令运行超过了{timeout}ms，已自动终止。";
                 }
 
                 // 确保完整读取输出流

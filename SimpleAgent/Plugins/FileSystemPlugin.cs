@@ -288,9 +288,13 @@ namespace SimpleAgent.Plugins
             string fullPath = Path.IsPathRooted(path) ? Path.GetFullPath(path) : Path.GetFullPath(Path.Combine(context.WorkingDirectory, path));
             string checkPath = fullPath;
             if (!checkPath.EndsWith(Path.DirectorySeparatorChar.ToString())) checkPath += Path.DirectorySeparatorChar;
+            
+            // 确保对比的基准路径也带有斜杠
+            string safeWorkDir = context.WorkingDirectory;
+            if (!safeWorkDir.EndsWith(Path.DirectorySeparatorChar.ToString())) safeWorkDir += Path.DirectorySeparatorChar;
 
             // 验证最终路径是否依然在工作目录内部
-            if (!checkPath.StartsWith(context.WorkingDirectory, StringComparison.OrdinalIgnoreCase))
+            if (!checkPath.StartsWith(safeWorkDir, StringComparison.OrdinalIgnoreCase))
             {
                 throw new UnauthorizedAccessException($"安全拦截：禁止越权访问工作目录之外的路径 ({fullPath})");
             }
