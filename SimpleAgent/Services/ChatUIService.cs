@@ -1,4 +1,6 @@
-﻿using SimpleAgent.UserControls;
+using Microsoft.SemanticKernel.ChatCompletion;
+using SimpleAgent.Models;
+using SimpleAgent.UserControls;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -415,6 +417,32 @@ namespace SimpleAgent.Services
             // 检查最后一个字符是不是换行符 \n 或 \r
             char lastChar = textBox.Text[textBox.TextLength - 1];
             return lastChar == '\n' || lastChar == '\r';
+        }
+
+        /// <summary>
+        /// 加载会话历史记录
+        /// </summary>
+        /// <param name="context">会话上下文</param>
+        public async Task LoadConversationHistory(AgentContext context)
+        {
+            try
+            {
+                if (context.ChatHistory == null) return;
+
+                foreach (var kvp in context.ChatHistory)
+                {
+                    var agentType = kvp.Key;
+                    var history = kvp.Value;
+                    if (agentType == AgentType.Router) continue;
+                    var chatType = agentType != AgentType.SubDeveloper ? agentType : AgentType.Developer;
+                    var panel = chatPanels[chatType];
+                    panel.VerticalScroll.Value = panel.VerticalScroll.Maximum;
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"加载会话历史失败: {ex.Message}");
+            }
         }
     }
 }

@@ -1,4 +1,6 @@
-﻿namespace SimpleAgent
+﻿using SimpleAgent.UserControls;
+
+namespace SimpleAgent
 {
     partial class MainForm
     {
@@ -32,13 +34,13 @@
             UserInput = new TextBox();
             TopMenu = new MenuStrip();
             TopMenu_AppName = new ToolStripTextBox();
-            文件ToolStripMenuItem = new ToolStripMenuItem();
-            toolStripMenuItem1 = new ToolStripMenuItem();
+            TopMenu_File = new ToolStripMenuItem();
+            TopMenu_File_OpenProject = new ToolStripMenuItem();
             toolStripSeparator1 = new ToolStripSeparator();
             退出ToolStripMenuItem = new ToolStripMenuItem();
-            设置ToolStripMenuItem = new ToolStripMenuItem();
+            TopMenu_Setting = new ToolStripMenuItem();
             模型配置ToolStripMenuItem = new ToolStripMenuItem();
-            帮助ToolStripMenuItem = new ToolStripMenuItem();
+            TopMenu_Help = new ToolStripMenuItem();
             使用文档ToolStripMenuItem = new ToolStripMenuItem();
             关于ToolStripMenuItem = new ToolStripMenuItem();
             TopMenu_Close = new SimpleAgent.UserControls.ToolStripButton();
@@ -51,24 +53,24 @@
             CoreLabel = new ToolStripStatusLabel();
             RefreshLabel = new ToolStripStatusLabel();
             PlannerChatPanel = new FlowLayoutPanel();
-            QuestionDialog = new SimpleAgent.UserControls.QuestionDialog();
+            QuestionDialog = new QuestionDialog();
             ContentContainer = new TableLayoutPanel();
             LeftPanel = new TableLayoutPanel();
-            label6 = new Label();
+            ConversationTreeView = new FlatTreeView();
             label5 = new Label();
             label3 = new Label();
             label4 = new Label();
             MiddlePanel = new TableLayoutPanel();
             ChatButtonPanel = new Panel();
-            SendButton = new SimpleAgent.UserControls.FlatButton();
-            StopButton = new SimpleAgent.UserControls.FlatButton();
+            SendButton = new FlatButton();
+            StopButton = new FlatButton();
             ChatPanelContainer = new Panel();
             CoderChatPanel = new FlowLayoutPanel();
             ReviewerChatPanel = new FlowLayoutPanel();
             AgentTabPanel = new TableLayoutPanel();
-            PlannerAgentTab = new SimpleAgent.UserControls.AgentTab();
-            CoderAgentTab = new SimpleAgent.UserControls.AgentTab();
-            ReviewerAgentTab = new SimpleAgent.UserControls.AgentTab();
+            PlannerAgentTab = new AgentTab();
+            CoderAgentTab = new AgentTab();
+            ReviewerAgentTab = new AgentTab();
             RightPanel = new TableLayoutPanel();
             label2 = new Label();
             BackgroundServerListBox = new ListBox();
@@ -97,6 +99,7 @@
             RAllTokens = new Label();
             RInTokens = new Label();
             ROutTokens = new Label();
+            label6 = new Label();
             TopMenu.SuspendLayout();
             StatusBar.SuspendLayout();
             ContentContainer.SuspendLayout();
@@ -129,7 +132,7 @@
             TopMenu.AutoSize = false;
             TopMenu.BackColor = SystemColors.Control;
             TopMenu.GripMargin = new Padding(0);
-            TopMenu.Items.AddRange(new ToolStripItem[] { TopMenu_AppName, 文件ToolStripMenuItem, 设置ToolStripMenuItem, 帮助ToolStripMenuItem, TopMenu_Close, TopMenu_Maximize, TopMenu_Minimize });
+            TopMenu.Items.AddRange(new ToolStripItem[] { TopMenu_AppName, TopMenu_File, TopMenu_Setting, TopMenu_Help, TopMenu_Close, TopMenu_Maximize, TopMenu_Minimize });
             TopMenu.Location = new Point(4, 4);
             TopMenu.Name = "TopMenu";
             TopMenu.Padding = new Padding(0, 0, 0, 5);
@@ -151,19 +154,19 @@
             TopMenu_AppName.Text = "AI编程助手";
             TopMenu_AppName.TextBoxTextAlign = HorizontalAlignment.Center;
             // 
-            // 文件ToolStripMenuItem
+            // TopMenu_File
             // 
-            文件ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { toolStripMenuItem1, toolStripSeparator1, 退出ToolStripMenuItem });
-            文件ToolStripMenuItem.Name = "文件ToolStripMenuItem";
-            文件ToolStripMenuItem.Size = new Size(44, 32);
-            文件ToolStripMenuItem.Text = "文件";
+            TopMenu_File.DropDownItems.AddRange(new ToolStripItem[] { TopMenu_File_OpenProject, toolStripSeparator1, 退出ToolStripMenuItem });
+            TopMenu_File.Name = "TopMenu_File";
+            TopMenu_File.Size = new Size(44, 32);
+            TopMenu_File.Text = "文件";
             // 
-            // toolStripMenuItem1
+            // TopMenu_File_OpenProject
             // 
-            toolStripMenuItem1.Name = "toolStripMenuItem1";
-            toolStripMenuItem1.Size = new Size(180, 22);
-            toolStripMenuItem1.Text = "打开项目";
-            toolStripMenuItem1.Click += toolStripMenuItem1_Click;
+            TopMenu_File_OpenProject.Name = "TopMenu_File_OpenProject";
+            TopMenu_File_OpenProject.Size = new Size(180, 22);
+            TopMenu_File_OpenProject.Text = "打开项目";
+            TopMenu_File_OpenProject.Click += OpenProject;
             // 
             // toolStripSeparator1
             // 
@@ -176,36 +179,36 @@
             退出ToolStripMenuItem.Size = new Size(180, 22);
             退出ToolStripMenuItem.Text = "退出";
             // 
-            // 设置ToolStripMenuItem
+            // TopMenu_Setting
             // 
-            设置ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 模型配置ToolStripMenuItem });
-            设置ToolStripMenuItem.Name = "设置ToolStripMenuItem";
-            设置ToolStripMenuItem.Size = new Size(44, 32);
-            设置ToolStripMenuItem.Text = "设置";
+            TopMenu_Setting.DropDownItems.AddRange(new ToolStripItem[] { 模型配置ToolStripMenuItem });
+            TopMenu_Setting.Name = "TopMenu_Setting";
+            TopMenu_Setting.Size = new Size(44, 32);
+            TopMenu_Setting.Text = "设置";
             // 
             // 模型配置ToolStripMenuItem
             // 
             模型配置ToolStripMenuItem.Name = "模型配置ToolStripMenuItem";
-            模型配置ToolStripMenuItem.Size = new Size(124, 22);
+            模型配置ToolStripMenuItem.Size = new Size(180, 22);
             模型配置ToolStripMenuItem.Text = "模型配置";
             // 
-            // 帮助ToolStripMenuItem
+            // TopMenu_Help
             // 
-            帮助ToolStripMenuItem.DropDownItems.AddRange(new ToolStripItem[] { 使用文档ToolStripMenuItem, 关于ToolStripMenuItem });
-            帮助ToolStripMenuItem.Name = "帮助ToolStripMenuItem";
-            帮助ToolStripMenuItem.Size = new Size(44, 32);
-            帮助ToolStripMenuItem.Text = "帮助";
+            TopMenu_Help.DropDownItems.AddRange(new ToolStripItem[] { 使用文档ToolStripMenuItem, 关于ToolStripMenuItem });
+            TopMenu_Help.Name = "TopMenu_Help";
+            TopMenu_Help.Size = new Size(44, 32);
+            TopMenu_Help.Text = "帮助";
             // 
             // 使用文档ToolStripMenuItem
             // 
             使用文档ToolStripMenuItem.Name = "使用文档ToolStripMenuItem";
-            使用文档ToolStripMenuItem.Size = new Size(124, 22);
+            使用文档ToolStripMenuItem.Size = new Size(180, 22);
             使用文档ToolStripMenuItem.Text = "使用文档";
             // 
             // 关于ToolStripMenuItem
             // 
             关于ToolStripMenuItem.Name = "关于ToolStripMenuItem";
-            关于ToolStripMenuItem.Size = new Size(124, 22);
+            关于ToolStripMenuItem.Size = new Size(180, 22);
             关于ToolStripMenuItem.Text = "关于";
             // 
             // TopMenu_Close
@@ -355,7 +358,7 @@
             LeftPanel.BackColor = Color.White;
             LeftPanel.ColumnCount = 1;
             LeftPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            LeftPanel.Controls.Add(label6, 0, 3);
+            LeftPanel.Controls.Add(ConversationTreeView, 0, 3);
             LeftPanel.Controls.Add(label5, 0, 2);
             LeftPanel.Controls.Add(label3, 0, 0);
             LeftPanel.Controls.Add(label4, 0, 1);
@@ -371,19 +374,24 @@
             LeftPanel.Size = new Size(250, 653);
             LeftPanel.TabIndex = 6;
             // 
-            // label6
+            // ConversationTreeView
             // 
-            label6.AutoSize = true;
-            label6.Dock = DockStyle.Fill;
-            label6.Font = new Font("Microsoft YaHei UI", 18F, FontStyle.Regular, GraphicsUnit.Point, 134);
-            label6.ForeColor = Color.Silver;
-            label6.Location = new Point(0, 237);
-            label6.Margin = new Padding(0);
-            label6.Name = "label6";
-            label6.Size = new Size(250, 416);
-            label6.TabIndex = 7;
-            label6.Text = "待开发";
-            label6.TextAlign = ContentAlignment.MiddleCenter;
+            ConversationTreeView.BackColor = Color.White;
+            ConversationTreeView.BorderStyle = BorderStyle.None;
+            ConversationTreeView.Dock = DockStyle.Fill;
+            ConversationTreeView.DrawMode = TreeViewDrawMode.OwnerDrawAll;
+            ConversationTreeView.Font = new Font("微软雅黑", 10F);
+            ConversationTreeView.FullRowSelect = true;
+            ConversationTreeView.HideSelection = false;
+            ConversationTreeView.ItemHeight = 32;
+            ConversationTreeView.Location = new Point(0, 237);
+            ConversationTreeView.Margin = new Padding(0);
+            ConversationTreeView.Name = "ConversationTreeView";
+            ConversationTreeView.ShowLines = false;
+            ConversationTreeView.ShowPlusMinus = false;
+            ConversationTreeView.Size = new Size(250, 416);
+            ConversationTreeView.TabIndex = 8;
+            ConversationTreeView.NodeMouseClick += ConversationTreeView_NodeMouseClick;
             // 
             // label5
             // 
@@ -1004,6 +1012,20 @@
             ROutTokens.Text = "0";
             ROutTokens.TextAlign = ContentAlignment.MiddleCenter;
             // 
+            // label6
+            // 
+            label6.AutoSize = true;
+            label6.Dock = DockStyle.Fill;
+            label6.Font = new Font("Microsoft YaHei UI", 18F, FontStyle.Regular, GraphicsUnit.Point, 134);
+            label6.ForeColor = Color.Silver;
+            label6.Location = new Point(0, 237);
+            label6.Margin = new Padding(0);
+            label6.Name = "label6";
+            label6.Size = new Size(250, 416);
+            label6.TabIndex = 7;
+            label6.Text = "待开发";
+            label6.TextAlign = ContentAlignment.MiddleCenter;
+            // 
             // MainForm
             // 
             AutoScaleDimensions = new SizeF(7F, 17F);
@@ -1047,10 +1069,10 @@
         #endregion
         private TextBox UserInput;
 		private MenuStrip TopMenu;
-		private ToolStripMenuItem 文件ToolStripMenuItem;
-		private ToolStripMenuItem 设置ToolStripMenuItem;
-		private ToolStripMenuItem 帮助ToolStripMenuItem;
-		private ToolStripMenuItem toolStripMenuItem1;
+		private ToolStripMenuItem TopMenu_File;
+		private ToolStripMenuItem TopMenu_Setting;
+		private ToolStripMenuItem TopMenu_Help;
+		private ToolStripMenuItem TopMenu_File_OpenProject;
 		private ToolStripSeparator toolStripSeparator1;
 		private ToolStripMenuItem 退出ToolStripMenuItem;
 		private ToolStripMenuItem 模型配置ToolStripMenuItem;
@@ -1083,6 +1105,7 @@
 		private Label label3;
 		private Label label6;
 		private Label label4;
+		private FlatTreeView ConversationTreeView;
 		private ToolStripStatusLabel ModelStatusLabel;
 		private ToolStripStatusLabel MemoryLabel;
 		private ToolStripStatusLabel CoreLabel;

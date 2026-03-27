@@ -13,6 +13,7 @@ using SimpleAgent.UserControls;
 using SimpleAgent.Utility;
 using System.Diagnostics;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace SimpleAgent
@@ -81,6 +82,7 @@ namespace SimpleAgent
 
             // 初始化
             InitializeAgentTab();
+            LoadConversationTree();
 
             // 设置自定义渲染器
             TopMenu.Renderer = new Renderer.MenuStripRenderer();
@@ -102,7 +104,7 @@ namespace SimpleAgent
         /// <summary>
         /// 创建会话
         /// </summary>
-        private async Task CreateConversation()
+        private async Task<Guid> CreateConversation()
         {
             try
             {
@@ -114,10 +116,12 @@ namespace SimpleAgent
                 multiAgentOrchestrator.OnResetUserInputState += ActivationSendButton;
 
                 routerAgent = agentFactory.CreateAgent<RouterAgent>(currentContext);
+                return guid;
             }
             catch (Exception ex)
             {
                 logger.LogError("创建新会话失败: {msg}", ex.Message);
+                throw;
             }
         }
 
@@ -640,10 +644,207 @@ namespace SimpleAgent
 
         #endregion
 
-        private async void toolStripMenuItem1_Click(object sender, EventArgs e)
+        #region 对话列表
+
+        /// <summary>
+        /// 点击节点事件
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void ConversationTreeView_NodeMouseClick(object sender, TreeNodeMouseClickEventArgs e)
         {
-            // 模拟新建会话
-            CreateConversation();
+            if (e.Node?.Level == 1)
+            {
+                SwitchConversation(e.Node);
+            }
+        }
+
+        /// <summary>
+        /// 切换会话
+        /// </summary>
+        /// <param name="node"></param>
+        private void SwitchConversation(TreeNode node)
+        {
+
+        }
+
+        private async Task LoadConversationAsync(Guid conversationId)
+        {
+            try
+            {
+                currentContext = await contextRepository.GetOrCreateContextAsync(conversationId);
+
+                multiAgentOrchestrator?.OnResetUserInputState -= ActivationSendButton;
+                multiAgentOrchestrator = orchestratorFactory.CreateOrchestrator(currentContext);
+                multiAgentOrchestrator.OnResetUserInputState += ActivationSendButton;
+
+                routerAgent = agentFactory.CreateAgent<RouterAgent>(currentContext);
+
+                ClearChatPanels();
+                await chatUIService.LoadConversationHistory(currentContext);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError("加载会话失败: {msg}", ex.Message);
+            }
+        }
+
+        private void ClearChatPanels()
+        {
+            PlannerChatPanel.Controls.Clear();
+            CoderChatPanel.Controls.Clear();
+            ReviewerChatPanel.Controls.Clear();
+        }
+
+        private void SaveConversationTree()
+        {
+            try
+            {
+                var treeData = new List<ConversationTreeNode>();
+                foreach (TreeNode projectNode in ConversationTreeView.Nodes)
+                {
+                    var projectNodeData = new ConversationTreeNode
+                    {
+                        Name = projectNode.Text,
+                        IsProject = true,
+                        Children = new List<ConversationTreeNode>()
+                    };
+
+                    foreach (TreeNode conversationNode in projectNode.Nodes)
+                    {
+                        projectNodeData.Children.Add(new ConversationTreeNode
+                        {
+                            Name = conversationNode.Text,
+                            IsProject = false,
+                            ConversationId = (conversationNode.Tag as ConversationTreeNode)?.ConversationId ?? Guid.Empty,
+                        });
+                    }
+
+                    treeData.Add(projectNodeData);
+                }
+
+                var json = JsonSerializer.Serialize(treeData, new JsonSerializerOptions { WriteIndented = true });
+                var filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "conversation_tree.json");
+                File.WriteAllText(filePath, json);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError("保存对话树失败: {msg}", ex.Message);
+            }
+        }
+
+        private void LoadConversationTree()
+        {
+            try
+            {
+                var filePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "conversation_tree.json");
+                if (!File.Exists(filePath))
+                {
+                    InitializeDefaultTree();
+                    SaveConversationTree();
+                    return;
+                }
+
+                var json = File.ReadAllText(filePath);
+                var treeData = JsonSerializer.Deserialize<List<ConversationTreeNode>>(json);
+
+                if (treeData != null)
+                {
+                    ConversationTreeView.Nodes.Clear();
+                    foreach (var projectNodeData in treeData)
+                    {
+                        var projectNode = new TreeNode(projectNodeData.Name)
+                        {
+                            Tag = projectNodeData
+                        };
+
+                        if (projectNodeData.Children != null)
+                        {
+                            foreach (var conversationNodeData in projectNodeData.Children)
+                            {
+                                var conversationNode = new TreeNode(conversationNodeData.Name)
+                                {
+                                    Tag = conversationNodeData.ConversationId
+                                };
+                                projectNode.Nodes.Add(conversationNode);
+                            }
+                        }
+
+                        ConversationTreeView.Nodes.Add(projectNode);
+                    }
+
+                    ConversationTreeView.ExpandAll();
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError("加载对话树失败: {msg}", ex.Message);
+                InitializeDefaultTree();
+            }
+        }
+
+        /// <summary>
+        /// 初始化会话树
+        /// </summary>
+        private void InitializeDefaultTree()
+        {
+
+        }
+
+        #endregion
+
+        /// <summary>
+        /// 打开项目
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private async void OpenProject(object sender, EventArgs e)
+        {
+            using FolderBrowserDialog folderDialog = new();
+            folderDialog.Description = "请选择项目文件夹";
+            folderDialog.ShowNewFolderButton = true;
+
+            if (folderDialog.ShowDialog() == DialogResult.OK)
+            {
+                string selectedPath = folderDialog.SelectedPath;
+                string name = new DirectoryInfo(selectedPath).Name;
+
+                // 创建会话节点
+                var guid = await CreateConversation();
+                ConversationTreeNode subNode = new()
+                {
+                    Name = $"新会话_{DateTime.Now:yyyyMMddHHmmss}",
+                    Path = selectedPath,
+                    IsProject = false,
+                    ConversationId = guid,
+                };
+
+                TreeNode subTreeNode = new(subNode.Name)
+                {
+                    Tag = subNode,
+                    ToolTipText = selectedPath,
+                    Checked = true,
+                };
+
+                // 创建项目节点
+                ConversationTreeNode projectNode = new()
+                {
+                    Name = name,
+                    Path = selectedPath,
+                    IsProject = true,
+                    ConversationId = Guid.Empty,
+                };
+
+                TreeNode projectTreeNode = new(name, [subTreeNode])
+                {
+                    Tag = projectNode,
+                    ToolTipText = selectedPath,
+                };
+
+                ConversationTreeView.Nodes.Add(projectTreeNode);
+                projectTreeNode.Expand();
+                ConversationTreeView.SelectedNode = subTreeNode;
+            }
         }
     }
 }
