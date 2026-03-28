@@ -394,6 +394,17 @@ namespace SimpleAgent
 		}
 
 		/// <summary>
+		/// 打开设置窗口
+		/// </summary>
+		/// <param name="sender"></param>
+		/// <param name="e"></param>
+		private void OpenSettings(object sender, EventArgs e)
+		{
+			using SettingsForm settingsForm = new(settings);
+			settingsForm.ShowDialog(this);
+		}
+
+		/// <summary>
 		/// Windows消息处理: 添加调整窗口大小的功能
 		/// </summary>
 		/// <param name="m"></param>
@@ -666,7 +677,6 @@ namespace SimpleAgent
 		private void ActivateConversation()
 		{
 			CreateConversationButton.Enabled = true;
-			OpenProjectButton.Enabled = true;
 
 			MiddlePanel.Visible = true;
 			RightPanel.Visible = true;

@@ -290,11 +290,11 @@ namespace SimpleAgent.Plugins
             if (!checkPath.EndsWith(Path.DirectorySeparatorChar.ToString())) checkPath += Path.DirectorySeparatorChar;
             
             // 确保对比的基准路径也带有斜杠
-            string safeWorkDir = context.WorkingDirectory;
-            if (!safeWorkDir.EndsWith(Path.DirectorySeparatorChar.ToString())) safeWorkDir += Path.DirectorySeparatorChar;
+            //string safeWorkDir = context.WorkingDirectory;
+            //if (!safeWorkDir.EndsWith(Path.DirectorySeparatorChar.ToString())) safeWorkDir += Path.DirectorySeparatorChar;
 
             // 验证最终路径是否依然在工作目录内部
-            if (!checkPath.StartsWith(safeWorkDir, StringComparison.OrdinalIgnoreCase))
+            if (!checkPath.StartsWith(context.WorkingDirectory, StringComparison.OrdinalIgnoreCase))
             {
                 throw new UnauthorizedAccessException($"安全拦截：禁止越权访问工作目录之外的路径 ({fullPath})");
             }
