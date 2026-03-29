@@ -40,6 +40,7 @@ namespace SimpleAgent
 		private readonly IBackgroundService backgroundService;
 		private readonly AgentContextRepository contextRepository;
 		private readonly ConversationRepository conversationRepository;
+		private readonly ConversationManager conversationManager;
 		private readonly GPUStackClient stackClient;
 		private readonly ChatUIService chatUIService;
 
@@ -55,6 +56,7 @@ namespace SimpleAgent
 			IOrchestratorFactory orchestratorFactory,
 			AgentContextRepository contextRepository,
 			ConversationRepository conversationRepository,
+			ConversationManager conversationManager,
 			ISettingsService settings,
 			IBackgroundService backgroundService,
 			IStreamingExecutionEngine streamingExecutionEngine,
@@ -65,10 +67,12 @@ namespace SimpleAgent
 
 			this.logger = logger;
 			this.settings = settings;
+			this.orchestratorFactory = orchestratorFactory;
 			this.contextRepository = contextRepository;
 			this.conversationRepository = conversationRepository;
-			conversationRepository.OnSwitchConversation += OnSwitchConversation;
-			this.orchestratorFactory = orchestratorFactory;
+			this.conversationManager = conversationManager;
+			conversationManager.OnConversationSwitched += OnSwitchConversation;
+			conversationManager.OnLoaded += OnConversationLoaded;
 
 			this.stackClient = stackClient;
 
@@ -85,7 +89,8 @@ namespace SimpleAgent
 			InitializeAgentTab();
 
 			// 加载会话树
-			var isLoad = conversationRepository.LoadConversationTree(ConversationTreeView).Result;
+			// 会话存储TODO: 初始化加载
+			var isLoad = conversationManager.Load().Result;
 			if (isLoad)
 			{
 				ActivateConversation();
@@ -649,18 +654,53 @@ namespace SimpleAgent
 		/// </summary>
 		/// <param name="sender"></param>
 		/// <param name="e"></param>
-		private void ConversationTreeView_NodeMouseClick(object sender, TreeNodeMouseClickEventArgs e)
+		private async void ConversationTreeView_NodeMouseClick(object sender, TreeNodeMouseClickEventArgs e)
 		{
+			// 会话存储TODO: 切换
 			if (e.Node == null || e.Node.Parent == null || e.Node.IsSelected || selectedNode == e.Node) return;
 			selectedNode = e.Node;
-			conversationRepository.SwitchConversation(selectedNode).Wait();
+			var node = selectedNode.Tag as ConversationTreeNode;
+			await conversationManager.SwitchConversationAsync(node.ConversationId);
 		}
 
 		/// <summary>
 		/// 切换会话
 		/// </summary>
-		private void OnSwitchConversation()
+		private void OnSwitchConversation(AgentContext context)
 		{
+			ClearConversation();
+		}
+
+		private void OnConversationLoaded(List<ConversationTreeNode> tree)
+		{
+			foreach (var projectNodeData in tree)
+			{
+				var projectNode = new TreeNode(projectNodeData.Name) { Tag = projectNodeData, ToolTipText = projectNodeData.Path };
+
+				if (projectNodeData.Children != null)
+				{
+					foreach (var convData in projectNodeData.Children)
+					{
+						var convNode = new TreeNode(convData.Name) { Tag = convData, ToolTipText = convData.Path };
+						projectNode.Nodes.Add(convNode);
+					}
+				}
+				ConversationTreeView.Nodes.Add(projectNode);
+			}
+
+			if (tree.Count > 0 && tree[0].Children.Count > 0)
+			{
+				ConversationTreeView.Nodes[0].Expand();
+				ConversationTreeView.SelectedNode = ConversationTreeView.Nodes[0].Nodes[0];
+			}
+		}
+
+		/// <summary>
+		/// 清除当前会话
+		/// </summary>
+		private void ClearConversation()
+		{
+			selectedNode = null;
 			PlannerChatPanel.Controls.Clear();
 			CoderChatPanel.Controls.Clear();
 			ReviewerChatPanel.Controls.Clear();
@@ -675,6 +715,7 @@ namespace SimpleAgent
 		/// <param name="e"></param>
 		private async void OpenProject(object sender, EventArgs e)
 		{
+			// 会话存储TODO: 创建项目
 			using FolderBrowserDialog folderDialog = new();
 			folderDialog.Description = "请选择项目文件夹";
 			folderDialog.ShowNewFolderButton = true;
@@ -682,10 +723,27 @@ namespace SimpleAgent
 			if (folderDialog.ShowDialog() == DialogResult.OK)
 			{
 				string selectedPath = folderDialog.SelectedPath;
-				var orchestrator = await conversationRepository.CreateProjectNode(ConversationTreeView, selectedPath);
-				if (orchestrator != null)
+				string name = new DirectoryInfo(selectedPath).Name;
+				var node = await conversationManager.CreateProject(name, selectedPath);
+				if (conversationManager.CurrentOrchestrator != null)
 				{
-					multiAgentOrchestrator = orchestrator;
+					var subNode = node.Children[0];
+					TreeNode subTreeNode = new(subNode.Name)
+					{
+						Tag = subNode,
+						ToolTipText = subNode.Path,
+					};
+					TreeNode projectTreeNode = new(name)
+					{
+						Tag = node,
+						ToolTipText = selectedPath,
+					};
+					projectTreeNode.Nodes.Add(subTreeNode);
+					ConversationTreeView.Nodes.Insert(0, projectTreeNode);
+					projectTreeNode.Expand();
+					ConversationTreeView.SelectedNode = subTreeNode;
+
+					multiAgentOrchestrator = conversationManager.CurrentOrchestrator;
 					multiAgentOrchestrator.OnResetUserInputState += ActivationSendButton;
 					ActivateConversation();
 				}
@@ -694,11 +752,27 @@ namespace SimpleAgent
 
 		private async void CreateConversationButton_Click(object sender, EventArgs e)
 		{
+			// 会话存储TODO: 创建会话
 			if (ConversationTreeView.SelectedNode == null) return;
-			var orchestrator = await conversationRepository.CreateConversationNode(ConversationTreeView);
-			if (orchestrator != null)
+			var parNode = ConversationTreeView.SelectedNode.Parent ?? ConversationTreeView.SelectedNode;
+			var node = await conversationManager.CreateConversation(parNode.Tag as ConversationTreeNode, ConversationTreeView.SelectedNode.ToolTipText);
+			if (conversationManager.CurrentOrchestrator != null)
 			{
-				multiAgentOrchestrator = orchestrator;
+				TreeNode subTreeNode = new(node.Name)
+				{
+					Tag = node,
+					ToolTipText = node.Path,
+				};
+				if (ConversationTreeView.SelectedNode.Parent == null)
+				{
+					ConversationTreeView.SelectedNode.Nodes.Insert(0, subTreeNode);
+				}
+				else
+				{
+					ConversationTreeView.SelectedNode.Parent.Nodes.Insert(0, subTreeNode);
+				}
+				ConversationTreeView.SelectedNode = subTreeNode;
+				multiAgentOrchestrator = conversationManager.CurrentOrchestrator;
 				multiAgentOrchestrator.OnResetUserInputState += ActivationSendButton;
 				ActivateConversation();
 			}
@@ -709,16 +783,43 @@ namespace SimpleAgent
 			OpenProject(sender, e);
 		}
 
-		private void ConversationTreeView_KeyDown(object sender, KeyEventArgs e)
+		private async void ConversationTreeView_KeyDown(object sender, KeyEventArgs e)
 		{
+			// 会话存储TODO: 删除会话
 			if (ConversationTreeView.SelectedNode == null) return;
 			if (e.KeyCode == Keys.Delete)
 			{
 				var res = MessageBox.Show("会话信息删除后将无法恢复，是否确认删除？", "警告", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
 				if (res == DialogResult.Yes)
 				{
-					conversationRepository.DeleteNode(ConversationTreeView.SelectedNode);
+					// 如果删除的是所选的
+					var node = ConversationTreeView.SelectedNode;
+					if (selectedNode == node)
+					{
+						ClearConversation();
+					}
+					var par = node.Parent == null ? node : node.Parent;
+					var sub = node.Parent == null ? null : node;
+					await conversationManager.Delete(par.Tag as ConversationTreeNode, sub?.Tag as ConversationTreeNode);
+					/*if (node.Parent == null)
+					{
+						foreach (TreeNode item in node.Nodes)
+						{
+							ConversationTreeView.Nodes.Remove(item);
+						}
+					}*/
+					ConversationTreeView.Nodes.Remove(node);
+					ConversationTreeView.SelectedNode = null;
 				}
+			}
+		}
+
+		private void ConversationTreeView_AfterLabelEdit(object sender, NodeLabelEditEventArgs e)
+		{
+			if (e.CancelEdit) return;
+			if (e.Node?.Tag is ConversationTreeNode node)
+			{
+				node.Name = e.Label;
 			}
 		}
 	}

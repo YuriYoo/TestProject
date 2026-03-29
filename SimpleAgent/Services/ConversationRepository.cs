@@ -25,17 +25,10 @@ namespace SimpleAgent.Services
 		};
 
 		private readonly string _storageDirectory;
-		private readonly AgentContextRepository contextRepository;
-		private readonly IOrchestratorFactory orchestratorFactory;
 		private readonly ILogger<ConversationRepository> logger;
 
-		private MultiAgentOrchestrator multiAgentOrchestrator;
-		public event Action OnSwitchConversation;
-
-		public ConversationRepository(ILogger<ConversationRepository> logger, IOrchestratorFactory orchestratorFactory, AgentContextRepository contextRepository)
+		public ConversationRepository(ILogger<ConversationRepository> logger)
 		{
-			this.contextRepository = contextRepository;
-			this.orchestratorFactory = orchestratorFactory;
 			this.logger = logger;
 
 			// 获取本地 AppData 目录
@@ -44,9 +37,48 @@ namespace SimpleAgent.Services
 		}
 
 		/// <summary>
+		/// 加载会话树数据
+		/// </summary>
+		public async Task<List<ConversationTreeNode>> LoadTreeAsync()
+		{
+			try
+			{
+				if (!File.Exists(_storageDirectory)) return [];
+
+				var json = File.ReadAllText(_storageDirectory);
+				var treeData = JsonSerializer.Deserialize<List<ConversationTreeNode>>(json, jsonOptions);
+				return treeData ?? [];
+			}
+			catch (Exception ex)
+			{
+				logger.LogError("加载对话树失败: {msg}", ex.Message);
+				return [];
+			}
+		}
+
+		/// <summary>
+		/// 保存会话树数据
+		/// </summary>
+		public async Task SaveTreeAsync(List<ConversationTreeNode> treeData)
+		{
+			try
+			{
+				var json = JsonSerializer.Serialize(treeData, jsonOptions);
+				File.WriteAllText(_storageDirectory, json);
+			}
+			catch (Exception ex)
+			{
+				logger.LogError("保存对话树失败: {msg}", ex.Message);
+			}
+		}
+
+
+
+
+		/// <summary>
 		/// 创建智能体上下文
 		/// </summary>
-		private async Task<MultiAgentOrchestrator> CreateContext()
+		/*private async Task<MultiAgentOrchestrator> CreateContext()
 		{
 			try
 			{
@@ -252,6 +284,6 @@ namespace SimpleAgent.Services
 				logger.LogError("加载对话树失败: {msg}", ex.Message);
 			}
 			return false;
-		}
+		}*/
 	}
 }

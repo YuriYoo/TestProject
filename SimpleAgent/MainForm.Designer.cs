@@ -416,6 +416,7 @@ namespace SimpleAgent
 			ConversationTreeView.ShowPlusMinus = false;
 			ConversationTreeView.Size = new Size(250, 416);
 			ConversationTreeView.TabIndex = 8;
+			ConversationTreeView.AfterLabelEdit += ConversationTreeView_AfterLabelEdit;
 			ConversationTreeView.NodeMouseClick += ConversationTreeView_NodeMouseClick;
 			ConversationTreeView.KeyDown += ConversationTreeView_KeyDown;
 			// 
