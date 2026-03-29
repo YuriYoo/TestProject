@@ -43,7 +43,7 @@ namespace SimpleAgent.Services
         public async Task<AgentContext> GetOrCreateContextAsync(Guid conversationId)
         {
             // 尝试从本地文件读取
-            var context = await GetContextAsync(conversationId);
+            var context = await LoadContextAsync(conversationId);
 
             // 如果文件不存在，就新建一个
             context ??= new AgentContext { ConversationId = conversationId };
@@ -56,7 +56,7 @@ namespace SimpleAgent.Services
         /// </summary>
         /// <param name="conversationId"></param>
         /// <returns></returns>
-        public async Task<AgentContext?> GetContextAsync(Guid conversationId)
+        public async Task<AgentContext?> LoadContextAsync(Guid conversationId)
         {
             // 如果文件不存在，说明是全新的对话，返回 null 让工厂去初始化
             string basePath = GetFilePath(conversationId);

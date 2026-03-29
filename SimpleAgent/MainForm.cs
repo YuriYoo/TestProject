@@ -43,14 +43,13 @@ namespace SimpleAgent
 		private readonly GPUStackClient stackClient;
 		private readonly ChatUIService chatUIService;
 
-		private readonly IAgentFactory agentFactory;
 		private readonly IOrchestratorFactory orchestratorFactory;
 
-		private RouterAgent routerAgent;
 		private MultiAgentOrchestrator multiAgentOrchestrator;
 		private AgentContext currentContext;
 
-		private CancellationTokenSource routerAgentCts;
+		/// <summary>当前会话节点</summary>
+		private TreeNode? selectedNode = null;
 
 		public MainForm(ILogger<MainForm> logger,
 			IOrchestratorFactory orchestratorFactory,
@@ -59,18 +58,17 @@ namespace SimpleAgent
 			ISettingsService settings,
 			IBackgroundService backgroundService,
 			IStreamingExecutionEngine streamingExecutionEngine,
-			IAgentFactory agentFactory,
 			GPUStackClient stackClient,
 			ChatUIService chatUIService)
 		{
+			InitializeComponent();
+
 			this.logger = logger;
 			this.settings = settings;
-			this.agentFactory = agentFactory;
 			this.contextRepository = contextRepository;
 			this.conversationRepository = conversationRepository;
+			conversationRepository.OnSwitchConversation += OnSwitchConversation;
 			this.orchestratorFactory = orchestratorFactory;
-
-			InitializeComponent();
 
 			this.stackClient = stackClient;
 
@@ -87,18 +85,10 @@ namespace SimpleAgent
 			InitializeAgentTab();
 
 			// 加载会话树
-			conversationRepository.LoadConversationTree(ConversationTreeView);
-			if (ConversationTreeView.Nodes.Count > 0)
+			var isLoad = conversationRepository.LoadConversationTree(ConversationTreeView).Result;
+			if (isLoad)
 			{
-				var parNode = ConversationTreeView.Nodes[0];
-				if (parNode != null && parNode.Nodes.Count > 0)
-				{
-					var subNode = parNode.Nodes[0];
-					parNode.Expand();
-					ConversationTreeView.SelectedNode = subNode;
-					conversationRepository.SwitchConversation(subNode);
-					ActivateConversation();
-				}
+				ActivateConversation();
 			}
 
 			// 设置自定义渲染器
@@ -118,40 +108,10 @@ namespace SimpleAgent
 			SendButton.Click += SendButton_Click;
 		}
 
-		/// <summary>
-		/// 创建智能体上下文
-		/// </summary>
-		private async Task<Guid> CreateContext()
-		{
-			try
-			{
-				var guid = Guid.NewGuid();
-				currentContext = await contextRepository.GetOrCreateContextAsync(guid);
-
-				multiAgentOrchestrator?.OnResetUserInputState -= ActivationSendButton;
-				multiAgentOrchestrator = orchestratorFactory.CreateOrchestrator(currentContext);
-				multiAgentOrchestrator.OnResetUserInputState += ActivationSendButton;
-
-				routerAgent = agentFactory.CreateAgent<RouterAgent>(currentContext);
-				return guid;
-			}
-			catch (Exception ex)
-			{
-				logger.LogError("创建新会话失败: {msg}", ex.Message);
-				throw;
-			}
-		}
-
 		bool isStart = false;
 
 		private void StopButton_Click(object sender, EventArgs e)
 		{
-			// 触发取消
-			if (routerAgentCts != null && !routerAgentCts.IsCancellationRequested)
-			{
-				routerAgentCts.Cancel();
-				ActivationSendButton();
-			}
 			multiAgentOrchestrator.StopWorkflow();
 		}
 
@@ -188,74 +148,73 @@ namespace SimpleAgent
 					chatUIService.SendUserMessage(AgentType.Developer, text);
 				}
 
-				WorkflowState state;
-				currentContext.OriginalRequest = text;
-				do
-				{
-					// 判断是否需要进行规划
-					routerAgentCts = new();
-					do { state = await routerAgent.ExecuteAsync(currentContext, routerAgentCts.Token); }
-					while (state == WorkflowState.Routing);
+				multiAgentOrchestrator.context.OriginalRequest = text;
 
-					// 需要进行规划
-					if (state == WorkflowState.Planning)
+				// 判断是否需要进行规划
+				var state = await multiAgentOrchestrator.RunRoutingAsync();
+
+				// 需要进行规划
+				if (state == WorkflowState.Planning)
+				{
+					// 当前在规划页面
+					if (PlannerAgentTab.IsSelected)
 					{
-						// 当前在规划页面
-						if (PlannerAgentTab.IsSelected)
+						RunPlanning(text);
+					}
+					// 当前不在规划页面
+					else
+					{
+						var (confirm, indices, options) = await chatUIService.ShowQuestion("对于该需求，模型建议先进行规划再开发，是否确认转交给[规划智能体]？", QuestionMode.NoSelect, null);
+						// 确认转交给 Planner
+						if (confirm)
 						{
+							CoderChatPanel.Controls.RemoveAt(CoderChatPanel.Controls.Count - 1);
+							chatUIService.SendUserMessage(AgentType.Planner, text);
 							RunPlanning(text);
 						}
-						// 当前不在规划页面
+						// 不转交, 继续使用Coder
 						else
-						{
-							var (confirm, indices, options) = await chatUIService.ShowQuestion("对于该需求，模型建议先进行规划再开发，是否确认转交给[规划智能体]？", QuestionMode.NoSelect, null);
-							// 确认转交给 Planner
-							if (confirm)
-							{
-								CoderChatPanel.Controls.RemoveAt(CoderChatPanel.Controls.Count - 1);
-								chatUIService.SendUserMessage(AgentType.Planner, text);
-								RunPlanning(text);
-							}
-							// 不转交, 继续使用Coder
-							else
-							{
-								RunDeveloping(text);
-							}
-						}
-					}
-
-					// 直接进行开发
-					else if (state == WorkflowState.Developing)
-					{
-						// 当前在开发页面
-						if (CoderAgentTab.IsSelected)
 						{
 							RunDeveloping(text);
 						}
-						// 当前不在开发页面
-						else
-						{
-							var (confirm, indices, options) = await chatUIService.ShowQuestion("对于该需求，模型建议可以直接开发，是否确认转交给[编程智能体]？", QuestionMode.NoSelect, null);
-							// 确认转交给 Coder
-							if (confirm)
-							{
-								PlannerChatPanel.Controls.RemoveAt(PlannerChatPanel.Controls.Count - 1);
-								chatUIService.SendUserMessage(AgentType.Developer, text);
-								RunDeveloping(text);
-							}
-							// 不转交, 继续使用Planner
-							else
-							{
-								RunPlanning(text);
-							}
-						}
-					}
-					else
-					{
-						logger.LogError("理论上不可能走到这里");
 					}
 				}
-				while (state == WorkflowState.Routing);
+
+				// 直接进行开发
+				else if (state == WorkflowState.Developing)
+				{
+					// 当前在开发页面
+					if (CoderAgentTab.IsSelected)
+					{
+						RunDeveloping(text);
+					}
+					// 当前不在开发页面
+					else
+					{
+						var (confirm, indices, options) = await chatUIService.ShowQuestion("对于该需求，模型建议可以直接开发，是否确认转交给[编程智能体]？", QuestionMode.NoSelect, null);
+						// 确认转交给 Coder
+						if (confirm)
+						{
+							PlannerChatPanel.Controls.RemoveAt(PlannerChatPanel.Controls.Count - 1);
+							chatUIService.SendUserMessage(AgentType.Developer, text);
+							RunDeveloping(text);
+						}
+						// 不转交, 继续使用Planner
+						else
+						{
+							RunPlanning(text);
+						}
+					}
+				}
+				else
+				{
+					logger.LogError("理论上不可能走到这里");
+				}
+			}
+			catch (OperationCanceledException)
+			{
+				ActivationSendButton();
+				logger.LogInformation("用户强制结束");
 			}
 			catch (Exception ex)
 			{
@@ -674,6 +633,9 @@ namespace SimpleAgent
 
 		#region 对话列表
 
+		/// <summary>
+		/// 有会话被加载时用于激活会话
+		/// </summary>
 		private void ActivateConversation()
 		{
 			CreateConversationButton.Enabled = true;
@@ -689,10 +651,15 @@ namespace SimpleAgent
 		/// <param name="e"></param>
 		private void ConversationTreeView_NodeMouseClick(object sender, TreeNodeMouseClickEventArgs e)
 		{
-			conversationRepository.SwitchConversation(e.Node);
+			if (e.Node == null || e.Node.Parent == null || e.Node.IsSelected || selectedNode == e.Node) return;
+			selectedNode = e.Node;
+			conversationRepository.SwitchConversation(selectedNode).Wait();
 		}
 
-		private void ClearChatPanels()
+		/// <summary>
+		/// 切换会话
+		/// </summary>
+		private void OnSwitchConversation()
 		{
 			PlannerChatPanel.Controls.Clear();
 			CoderChatPanel.Controls.Clear();
@@ -715,18 +682,26 @@ namespace SimpleAgent
 			if (folderDialog.ShowDialog() == DialogResult.OK)
 			{
 				string selectedPath = folderDialog.SelectedPath;
-				var guid = await CreateContext();
-				conversationRepository.CreateProjectNode(ConversationTreeView, guid, selectedPath);
-				ActivateConversation();
+				var orchestrator = await conversationRepository.CreateProjectNode(ConversationTreeView, selectedPath);
+				if (orchestrator != null)
+				{
+					multiAgentOrchestrator = orchestrator;
+					multiAgentOrchestrator.OnResetUserInputState += ActivationSendButton;
+					ActivateConversation();
+				}
 			}
 		}
 
 		private async void CreateConversationButton_Click(object sender, EventArgs e)
 		{
 			if (ConversationTreeView.SelectedNode == null) return;
-			var guid = await CreateContext();
-			conversationRepository.CreateConversationNode(ConversationTreeView, guid);
-			ActivateConversation();
+			var orchestrator = await conversationRepository.CreateConversationNode(ConversationTreeView);
+			if (orchestrator != null)
+			{
+				multiAgentOrchestrator = orchestrator;
+				multiAgentOrchestrator.OnResetUserInputState += ActivationSendButton;
+				ActivateConversation();
+			}
 		}
 
 		private void OpenProjectButton_Click(object sender, EventArgs e)

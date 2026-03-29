@@ -41,7 +41,7 @@ namespace SimpleAgent.Agents
         private bool _isFinished = false;
         private string _subAgentResult = string.Empty;
 
-        public SubDeveloperAgent(IKernelService kernelService, ISettingsService settingsService, IStreamingExecutionEngine executionEngine, AgentContext context) : base(SystemPrompt)
+        public SubDeveloperAgent(IKernelService kernelService, ISettingsService settingsService, IStreamingExecutionEngine executionEngine, AgentContext context) : base(SystemPrompt, context)
         {
             this.executionEngine = executionEngine;
             this.settingsService = settingsService;
@@ -88,10 +88,9 @@ namespace SimpleAgent.Agents
         /// <summary>
         /// 执行
         /// </summary>
-        /// <param name="context"></param>
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async Task<WorkflowState> ExecuteAsync(AgentContext context, CancellationToken cancellationToken)
+        public async Task<WorkflowState> ExecuteAsync(CancellationToken cancellationToken)
         {
             return WorkflowState.Developing;
         }

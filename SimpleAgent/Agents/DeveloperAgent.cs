@@ -17,10 +17,10 @@ using System.Threading.Tasks;
 
 namespace SimpleAgent.Agents
 {
-    public class DeveloperAgent : BaseAgent, IWorkflowAgent
-    {
-        public const string NickName = "开发智能体";
-        private const string SystemPrompt = @"
+	public class DeveloperAgent : BaseAgent, IWorkflowAgent
+	{
+		public const string NickName = "开发智能体";
+		private const string SystemPrompt = @"
 # Role
 你是一个资深的软件架构师。
 
@@ -41,114 +41,113 @@ namespace SimpleAgent.Agents
 - 【关键指令】合理利用子代理，你需要将任务分给多个子代理，不要让一子代理负责所有任务。
 - 【关键指令】只有当所有任务都已经完成，且你在本地运行的编译和测试全部通过后，你才可以停止。
 - 【关键指令】当你停止时才允许且必须调用 `submit_for_review` 函数，并在参数中附上你修改了哪些文件的简要总结。";
-        // - 【绝对禁止】你作为管理者，绝对不能直接使用 `write_file`、`edit_file`、`append_file` 来编写主体业务代码！
+		// - 【绝对禁止】你作为管理者，绝对不能直接使用 `write_file`、`edit_file`、`append_file` 来编写主体业务代码！
 
-        public AgentType Type => AgentType.Developer;
-        private readonly IStreamingExecutionEngine executionEngine;
-        private readonly ISettingsService settingsService;
-        private readonly IChatHistoryReducer historyReducer;
+		public AgentType Type => AgentType.Developer;
+		private readonly IStreamingExecutionEngine executionEngine;
+		private readonly ISettingsService settingsService;
+		private readonly IChatHistoryReducer historyReducer;
 
-        public DeveloperAgent(IKernelService kernelService, IChatHistoryReducer historyReducer, ISettingsService settingsService, IStreamingExecutionEngine executionEngine, AgentContext context) : base(SystemPrompt)
-        {
-            this.executionEngine = executionEngine;
-            this.historyReducer = historyReducer;
-            this.settingsService = settingsService;
+		public DeveloperAgent(IKernelService kernelService, IChatHistoryReducer historyReducer, ISettingsService settingsService, IStreamingExecutionEngine executionEngine, AgentContext context) : base(SystemPrompt, context)
+		{
+			this.executionEngine = executionEngine;
+			this.historyReducer = historyReducer;
+			this.settingsService = settingsService;
 
-            kernel = kernelService.BuildKernel(context);
-            KernelFunction[] kernelFunctions = [
-                kernel.Plugins.GetFunction("sub_agent", "delegate_sub_task"),
-                kernel.Plugins.GetFunction("file_system", "read_file"),
-                kernel.Plugins.GetFunction("file_system", "list_directory"),
-                kernel.Plugins.GetFunction("file_system", "path_exists"),
-                kernel.Plugins.GetFunction("file_system", "get_working_directory"),
-                kernel.Plugins.GetFunction("file_system", "create_directory"),
-                kernel.Plugins.GetFunction("file_system", "delete_file"),
+			kernel = kernelService.BuildKernel(context);
+			KernelFunction[] kernelFunctions = [
+				kernel.Plugins.GetFunction("sub_agent", "delegate_sub_task"),
+				kernel.Plugins.GetFunction("file_system", "read_file"),
+				kernel.Plugins.GetFunction("file_system", "list_directory"),
+				kernel.Plugins.GetFunction("file_system", "path_exists"),
+				kernel.Plugins.GetFunction("file_system", "get_working_directory"),
+				kernel.Plugins.GetFunction("file_system", "create_directory"),
+				kernel.Plugins.GetFunction("file_system", "delete_file"),
                 //kernel.Plugins.GetFunction("file_system", "append_file"),
                 //kernel.Plugins.GetFunction("file_system", "write_file"),
                 //kernel.Plugins.GetFunction("file_system", "edit_file"),
                 kernel.Plugins.GetFunction("terminal", "start_background_service"),
-                kernel.Plugins.GetFunction("terminal", "stop_background_service"),
-                kernel.Plugins.GetFunction("terminal", "get_service_logs"),
-                kernel.Plugins.GetFunction("terminal", "execute_command"),
-                kernel.Plugins.GetFunction("http_test", "send_http_request"),
-                kernel.Plugins.GetFunction("workflow", "submit_for_review"),
-            ];
+				kernel.Plugins.GetFunction("terminal", "stop_background_service"),
+				kernel.Plugins.GetFunction("terminal", "get_service_logs"),
+				kernel.Plugins.GetFunction("terminal", "execute_command"),
+				kernel.Plugins.GetFunction("http_test", "send_http_request"),
+				kernel.Plugins.GetFunction("workflow", "submit_for_review"),
+			];
 
-            chatCompletionService = kernel.GetRequiredService<IChatCompletionService>();
-            settings = new OpenAIPromptExecutionSettings
-            {
-                FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(kernelFunctions),
-                Temperature = 0.2,
-                Seed = DeveloperSeed < 0 ? seed : DeveloperSeed,
-            };
+			chatCompletionService = kernel.GetRequiredService<IChatCompletionService>();
+			settings = new OpenAIPromptExecutionSettings
+			{
+				FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(kernelFunctions),
+				Temperature = 0.2,
+				Seed = DeveloperSeed < 0 ? seed : DeveloperSeed,
+			};
 
-            Log.Information("Developer初始化成功, Seed:{Seed}  Temperature:{Temperature}", settings.Seed, settings.Temperature);
-        }
+			Log.Information("Developer初始化成功, Seed:{Seed}  Temperature:{Temperature}", settings.Seed, settings.Temperature);
+		}
 
-        /// <summary>
-        /// 执行
-        /// </summary>
-        /// <param name="context"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
-        public async Task<WorkflowState> ExecuteAsync(AgentContext context, CancellationToken cancellationToken)
-        {
-            Log.Information("Developer 正在编写和测试代码...");
+		/// <summary>
+		/// 执行
+		/// </summary>
+		/// <param name="cancellationToken"></param>
+		/// <returns></returns>
+		public async Task<WorkflowState> ExecuteAsync(CancellationToken cancellationToken)
+		{
+			Log.Information("Developer 正在编写和测试代码...");
 
-            // 首次发送的为执行计划, 后续的为 Reviewer 修改
-            if (context.ThinkingRounds == 0)
-            {
-                // 如果没有计划(用户直接向Coder发起请求)
-                if (string.IsNullOrEmpty(context.DetailedPlan))
-                {
-                    context.DetailedPlan = context.OriginalRequest;
-                    AddUserMessage(context.DetailedPlan);
-                }
-                // 如果有计划, 且已经是完善阶段了
-                else if (context.TakingRounds > 0)
-                {
-                    // 如果计划变更了
-                    if (context.IsChangePlan)
-                    {
-                        AddUserMessage($"请根据以下计划开发：\n{context.DetailedPlan}");
-                    }
-                    // 如果计划没变, 说明用户直接向Coder提出意见
-                    else
-                    {
-                        AddUserMessage(context.OriginalRequest);
-                    }
-                }
-                // 如果有计划, 且还没到完善阶段
-                else
-                {
-                    AddUserMessage($"请根据以下计划开发：\n{context.DetailedPlan}");
-                }
-            }
-            else if (!string.IsNullOrEmpty(context.ReviewerFeedback))
-            {
-                AddUserMessage($"Reviewer 驳回，要求做如下修改：\n{context.ReviewerFeedback}");
-                context.ReviewerFeedback = string.Empty;
-            }
-            else
-            {
-                AddUserMessage("继续");
-                AddDeveloperMessage("如果你确定已经完成计划，请调用 `submit_for_review` 提交审查。如果没有完成任务请不要停止，继续完成你的工作。");
-            }
+			// 首次发送的为执行计划, 后续的为 Reviewer 修改
+			if (context.ThinkingRounds == 0)
+			{
+				// 如果没有计划(用户直接向Coder发起请求)
+				if (string.IsNullOrEmpty(context.DetailedPlan))
+				{
+					context.DetailedPlan = context.OriginalRequest;
+					AddUserMessage(context.DetailedPlan);
+				}
+				// 如果有计划, 且已经是完善阶段了
+				else if (context.TakingRounds > 0)
+				{
+					// 如果计划变更了
+					if (context.IsChangePlan)
+					{
+						AddUserMessage($"请根据以下计划开发：\n{context.DetailedPlan}");
+					}
+					// 如果计划没变, 说明用户直接向Coder提出意见
+					else
+					{
+						AddUserMessage(context.OriginalRequest);
+					}
+				}
+				// 如果有计划, 且还没到完善阶段
+				else
+				{
+					AddUserMessage($"请根据以下计划开发：\n{context.DetailedPlan}");
+				}
+			}
+			else if (!string.IsNullOrEmpty(context.ReviewerFeedback))
+			{
+				AddUserMessage($"Reviewer 驳回，要求做如下修改：\n{context.ReviewerFeedback}");
+				context.ReviewerFeedback = string.Empty;
+			}
+			else
+			{
+				AddUserMessage("继续");
+				AddDeveloperMessage("如果你确定已经完成计划，请调用 `submit_for_review` 提交审查。如果没有完成任务请不要停止，继续完成你的工作。");
+			}
 
-            // 清空 NextState，等待模型执行结果
-            context.NextState = null;
+			// 清空 NextState，等待模型执行结果
+			context.NextState = null;
 
-            // 运行执行引擎，条件是：如果 NextState 被修改，说明工具被调用，流应当中断
-            await executionEngine.ExecuteStreamAsync(this, Type, cancellationToken,
-                () => context.NextState == null,
-                () => Utility.Utility.ChatHistorySave(Type, chatHistory));
+			// 运行执行引擎，条件是：如果 NextState 被修改，说明工具被调用，流应当中断
+			await executionEngine.ExecuteStreamAsync(this, Type, cancellationToken,
+				() => context.NextState == null,
+				() => Utility.Utility.ChatHistorySave(Type, chatHistory));
 
-            // 上下文压缩
-            // TODO: 将上下文数量写入到AgentContext中, 直接在此处先判断是否超过压缩阈值
-            await chatHistory.ReduceInPlaceAsync(historyReducer, CancellationToken.None);
+			// 上下文压缩
+			// TODO: 将上下文数量写入到AgentContext中, 直接在此处先判断是否超过压缩阈值
+			await chatHistory.ReduceInPlaceAsync(historyReducer, CancellationToken.None);
 
-            // 返回插件赋予的下一个状态；如果没设置，说明还没有结束对话
-            return context.NextState ?? WorkflowState.Developing;
-        }
-    }
+			// 返回插件赋予的下一个状态；如果没设置，说明还没有结束对话
+			return context.NextState ?? WorkflowState.Developing;
+		}
+	}
 }

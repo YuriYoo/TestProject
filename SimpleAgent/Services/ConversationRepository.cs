@@ -1,4 +1,5 @@
-﻿using Serilog;
+﻿using Microsoft.Extensions.Logging;
+using SimpleAgent.Factory;
 using SimpleAgent.Models;
 using SimpleAgent.UserControls;
 using System;
@@ -11,10 +12,6 @@ namespace SimpleAgent.Services
 {
 	public class ConversationRepository
 	{
-		private readonly string _storageDirectory;
-		private readonly AgentContextRepository contextRepository;
-		private TreeNode? selectedNode = null;
-
 		/// <summary>
 		/// 预定义全局的序列化配置
 		/// </summary>
@@ -27,9 +24,19 @@ namespace SimpleAgent.Services
 			Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
 		};
 
-		public ConversationRepository(AgentContextRepository contextRepository)
+		private readonly string _storageDirectory;
+		private readonly AgentContextRepository contextRepository;
+		private readonly IOrchestratorFactory orchestratorFactory;
+		private readonly ILogger<ConversationRepository> logger;
+
+		private MultiAgentOrchestrator multiAgentOrchestrator;
+		public event Action OnSwitchConversation;
+
+		public ConversationRepository(ILogger<ConversationRepository> logger, IOrchestratorFactory orchestratorFactory, AgentContextRepository contextRepository)
 		{
 			this.contextRepository = contextRepository;
+			this.orchestratorFactory = orchestratorFactory;
+			this.logger = logger;
 
 			// 获取本地 AppData 目录
 			var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
@@ -37,23 +44,43 @@ namespace SimpleAgent.Services
 		}
 
 		/// <summary>
+		/// 创建智能体上下文
+		/// </summary>
+		private async Task<MultiAgentOrchestrator> CreateContext()
+		{
+			try
+			{
+				var guid = Guid.NewGuid();
+				var context = await contextRepository.GetOrCreateContextAsync(guid);
+				multiAgentOrchestrator = orchestratorFactory.CreateOrchestrator(context); ;
+				return multiAgentOrchestrator;
+			}
+			catch (Exception ex)
+			{
+				logger.LogError("创建新会话失败: {msg}", ex.Message);
+				throw;
+			}
+		}
+
+		/// <summary>
 		/// 创建会话节点
 		/// </summary>
 		/// <param name="treeView"></param>
-		/// <param name="guid"></param>
 		/// <returns></returns>
-		public TreeNode? CreateConversationNode(TreeView treeView, Guid guid)
+		public async Task<MultiAgentOrchestrator?> CreateConversationNode(TreeView treeView)
 		{
 			var node = treeView.SelectedNode?.Parent ?? treeView.SelectedNode;
 			if (node == null) return null;
 			var path = (node.Tag as ConversationTreeNode).Path;
+
+			var orchestrator = await CreateContext();
 
 			ConversationTreeNode subNode = new()
 			{
 				Name = $"新会话_{DateTime.Now:yyyyMMdd_HHmmss}",
 				Path = path,
 				IsProject = false,
-				ConversationId = guid,
+				ConversationId = orchestrator.context.ConversationId,
 			};
 
 			TreeNode subTreeNode = new(subNode.Name)
@@ -64,18 +91,17 @@ namespace SimpleAgent.Services
 			};
 			node.Nodes.Insert(0, subTreeNode);
 			treeView.SelectedNode = subTreeNode;
-			SwitchConversation(subTreeNode);
+			await SwitchConversation(subTreeNode);
 			SaveConversationTree(treeView);
-			return subTreeNode;
+			return orchestrator;
 		}
 
 		/// <summary>
 		/// 创建项目节点
 		/// </summary>
 		/// <param name="treeView"></param>
-		/// <param name="guid"></param>
 		/// <param name="path"></param>
-		public TreeNode CreateProjectNode(TreeView treeView, Guid guid, string path)
+		public async Task<MultiAgentOrchestrator?> CreateProjectNode(TreeView treeView, string path)
 		{
 			string name = new DirectoryInfo(path).Name;
 
@@ -97,10 +123,13 @@ namespace SimpleAgent.Services
 			treeView.Nodes.Insert(0, projectTreeNode);
 			treeView.SelectedNode = projectTreeNode;
 			projectTreeNode.Expand();
-			CreateConversationNode(treeView, guid);
-			return projectTreeNode;
+			return await CreateConversationNode(treeView);
 		}
 
+		/// <summary>
+		/// 删除节点
+		/// </summary>
+		/// <param name="node"></param>
 		public void DeleteNode(TreeNode node)
 		{
 			var view = node.TreeView;
@@ -112,6 +141,7 @@ namespace SimpleAgent.Services
 				}
 			}
 			view.Nodes.Remove(node);
+			view.SelectedNode = null;
 			SaveConversationTree(view);
 		}
 
@@ -119,12 +149,16 @@ namespace SimpleAgent.Services
 		/// 切换会话
 		/// </summary>
 		/// <param name="node"></param>
-		public bool SwitchConversation(TreeNode node)
+		public async Task SwitchConversation(TreeNode node)
 		{
-			if (node == null || node.Parent == null || node.IsSelected || selectedNode == node) return false;
-			selectedNode = node;
+			if (node.Tag is not ConversationTreeNode cnode) return;
+			if (multiAgentOrchestrator != null)
+			{
+				await contextRepository.SaveContextAsync(multiAgentOrchestrator.context);
+			}
+			OnSwitchConversation?.Invoke();
+			await contextRepository.LoadContextAsync(cnode.ConversationId);
 			Trace.WriteLine($"切换到节点: {node.Text}");
-			return true;
 		}
 
 		/// <summary>
@@ -156,7 +190,7 @@ namespace SimpleAgent.Services
 			}
 			catch (Exception ex)
 			{
-				Log.Error("保存对话树失败: {msg}", ex.Message);
+				logger.LogError("保存对话树失败: {msg}", ex.Message);
 			}
 		}
 
@@ -164,7 +198,7 @@ namespace SimpleAgent.Services
 		/// 加载会话树
 		/// </summary>
 		/// <param name="treeView"></param>
-		public bool LoadConversationTree(TreeView treeView)
+		public async Task<bool> LoadConversationTree(TreeView treeView)
 		{
 			try
 			{
@@ -197,12 +231,25 @@ namespace SimpleAgent.Services
 
 						treeView.Nodes.Add(projectNode);
 					}
-					return true;
+
+					if (treeView.Nodes.Count > 0)
+					{
+						var parNode = treeView.Nodes[0];
+						if (parNode != null && parNode.Nodes.Count > 0)
+						{
+							var subNode = parNode.Nodes[0];
+							parNode.Expand();
+							treeView.SelectedNode = subNode;
+							await SwitchConversation(subNode);
+							return true;
+						}
+					}
+					return false;
 				}
 			}
 			catch (Exception ex)
 			{
-				Log.Error("加载对话树失败: {msg}", ex.Message);
+				logger.LogError("加载对话树失败: {msg}", ex.Message);
 			}
 			return false;
 		}

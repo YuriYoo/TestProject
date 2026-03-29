@@ -2,6 +2,7 @@
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 using OpenAI.Chat;
+using SimpleAgent.Models;
 using SimpleAgent.Services;
 using System;
 using System.Collections.Generic;
@@ -33,11 +34,14 @@ namespace SimpleAgent.Agents
 		//protected const int RouterSeed = 189011865;
 
 		private readonly string systemPrompt;
+		protected readonly AgentContext context;
 
-		public BaseAgent(string systemPrompt)
+		public BaseAgent(string systemPrompt, AgentContext context)
 		{
-			chatHistory = [];
 			this.systemPrompt = systemPrompt;
+			this.context = context;
+
+			chatHistory = [];
 			chatHistory.AddSystemMessage(systemPrompt);
 		}
 

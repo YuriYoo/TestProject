@@ -17,10 +17,10 @@ using System.Threading.Tasks;
 
 namespace SimpleAgent.Agents
 {
-    public class PlannerAgent : BaseAgent, IWorkflowAgent
-    {
-        public const string NickName = "规划智能体";
-        private const string SystemPrompt = @"
+	public class PlannerAgent : BaseAgent, IWorkflowAgent
+	{
+		public const string NickName = "规划智能体";
+		private const string SystemPrompt = @"
 # Role
 你是一位资深软件产品经理兼架构师。
 
@@ -40,64 +40,63 @@ namespace SimpleAgent.Agents
 - 你可以向用户询问是否满意计划，但是不需要向用户说明调用什么函数。
 - 【关键指令】仅当用户明确表示“计划没问题”、“可以开始开发”或类似同意的表述时，你才可以调用 `finalize_plan` 函数，并将最终版的 Markdown 计划作为参数传入，此时不需要回复用户任何文字。";
 
-        public AgentType Type => AgentType.Planner;
-        private readonly IStreamingExecutionEngine executionEngine;
+		public AgentType Type => AgentType.Planner;
+		private readonly IStreamingExecutionEngine executionEngine;
 
-        public PlannerAgent(IKernelService kernelService, IStreamingExecutionEngine executionEngine, AgentContext context) : base(SystemPrompt)
-        {
-            this.executionEngine = executionEngine;
+		public PlannerAgent(IKernelService kernelService, IStreamingExecutionEngine executionEngine, AgentContext context) : base(SystemPrompt, context)
+		{
+			this.executionEngine = executionEngine;
 
-            kernel = kernelService.BuildKernel(context);
-            KernelFunction[] kernelFunctions = [
-                kernel.Plugins.GetFunction("file_system", "read_file"),
-                kernel.Plugins.GetFunction("file_system", "list_directory"),
-                kernel.Plugins.GetFunction("file_system", "path_exists"),
-                kernel.Plugins.GetFunction("file_system", "get_working_directory"),
-                kernel.Plugins.GetFunction("workflow", "finalize_plan"),
-            ];
+			kernel = kernelService.BuildKernel(context);
+			KernelFunction[] kernelFunctions = [
+				kernel.Plugins.GetFunction("file_system", "read_file"),
+				kernel.Plugins.GetFunction("file_system", "list_directory"),
+				kernel.Plugins.GetFunction("file_system", "path_exists"),
+				kernel.Plugins.GetFunction("file_system", "get_working_directory"),
+				kernel.Plugins.GetFunction("workflow", "finalize_plan"),
+			];
 
-            chatCompletionService = kernel.GetRequiredService<IChatCompletionService>();
-            settings = new OpenAIPromptExecutionSettings
-            {
-                FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(kernelFunctions),
-                Temperature = 0.4,
-                Seed = PlannerSeed < 0 ? seed : PlannerSeed,
-            };
+			chatCompletionService = kernel.GetRequiredService<IChatCompletionService>();
+			settings = new OpenAIPromptExecutionSettings
+			{
+				FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(kernelFunctions),
+				Temperature = 0.4,
+				Seed = PlannerSeed < 0 ? seed : PlannerSeed,
+			};
 
-            Log.Information("Planner初始化成功, Seed:{Seed}  Temperature:{Temperature}", settings.Seed, settings.Temperature);
-        }
+			Log.Information("Planner初始化成功, Seed:{Seed}  Temperature:{Temperature}", settings.Seed, settings.Temperature);
+		}
 
-        /// <summary>
-        /// 执行
-        /// </summary>
-        /// <param name="context"></param>
-        /// <param name="cancellationToken"></param>
-        /// <returns></returns>
-        public async Task<WorkflowState> ExecuteAsync(AgentContext context, CancellationToken cancellationToken)
-        {
-            Log.Information("Planner 正在与您规划需求...");
+		/// <summary>
+		/// 执行
+		/// </summary>
+		/// <param name="cancellationToken"></param>
+		/// <returns></returns>
+		public async Task<WorkflowState> ExecuteAsync(CancellationToken cancellationToken)
+		{
+			Log.Information("Planner 正在与您规划需求...");
 
-            // 装载用户上下文
-            if (string.IsNullOrEmpty(context.DetailedPlan))
-            {
-                AddUserMessage(context.OriginalRequest);
-            }
-            else if (context.TakingRounds > 0)
-            {
-                context.IsChangePlan = true;
-                AddUserMessage(context.OriginalRequest);
-            }
+			// 装载用户上下文
+			if (string.IsNullOrEmpty(context.DetailedPlan))
+			{
+				AddUserMessage(context.OriginalRequest);
+			}
+			else if (context.TakingRounds > 0)
+			{
+				context.IsChangePlan = true;
+				AddUserMessage(context.OriginalRequest);
+			}
 
-            // 清空 NextState，等待模型执行结果
-            context.NextState = null;
+			// 清空 NextState，等待模型执行结果
+			context.NextState = null;
 
-            // 运行执行引擎，条件是：如果 NextState 被修改，说明工具被调用，流应当中断
-            await executionEngine.ExecuteStreamAsync(this, Type, cancellationToken,
-                () => context.NextState == null,
-                () => Utility.Utility.ChatHistorySave(Type, chatHistory));
+			// 运行执行引擎，条件是：如果 NextState 被修改，说明工具被调用，流应当中断
+			await executionEngine.ExecuteStreamAsync(this, Type, cancellationToken,
+				() => context.NextState == null,
+				() => Utility.Utility.ChatHistorySave(Type, chatHistory));
 
-            // 返回插件赋予的下一个状态；如果没设置，说明大模型在等待用户回答问题，保持当前状态
-            return context.NextState ?? WorkflowState.Planning;
-        }
-    }
+			// 返回插件赋予的下一个状态；如果没设置，说明大模型在等待用户回答问题，保持当前状态
+			return context.NextState ?? WorkflowState.Planning;
+		}
+	}
 }
