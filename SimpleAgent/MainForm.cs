@@ -832,7 +832,7 @@ namespace SimpleAgent
         private void ConversationTreeView_AfterLabelEdit(object sender, NodeLabelEditEventArgs e)
         {
             if (e.CancelEdit) return;
-            if (e.Node?.Tag is ConversationTreeNode node)
+            if (e.Node?.Tag is ConversationTreeNode node && e.Label != null)
             {
                 node.Name = e.Label;
                 conversationManager.SaveTree();
