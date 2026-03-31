@@ -14,7 +14,7 @@ namespace SimpleAgent.Models
         public Guid ConversationId { get; set; }
 
         /// <summary>工作路径(固定)</summary>
-        public string WorkingDirectory { get; set; } = @"D:\AICoder";
+        public string WorkingDirectory { get; set; } = string.Empty;
 
         /// <summary>对话轮次(固定递增)</summary>
         public int TakingRounds { get; set; } = 0;

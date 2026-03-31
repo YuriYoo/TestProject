@@ -13,6 +13,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace SimpleAgent.Agents
 {
@@ -37,10 +38,12 @@ namespace SimpleAgent.Agents
 
 		public AgentType Type => AgentType.Reviewer;
 		private readonly IStreamingExecutionEngine executionEngine;
+        private readonly ISettingsService setting;
 
-		public ReviewerAgent(IKernelService kernelService, IStreamingExecutionEngine executionEngine, AgentContext context) : base(SystemPrompt, context)
+        public ReviewerAgent(IKernelService kernelService, IStreamingExecutionEngine executionEngine, ISettingsService setting, AgentContext context) : base(SystemPrompt, context)
 		{
 			this.executionEngine = executionEngine;
+			this.setting = setting;
 
 			kernel = kernelService.BuildKernel(context);
 			KernelFunction[] kernelFunctions = [
@@ -58,10 +61,15 @@ namespace SimpleAgent.Agents
 			{
 				FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(kernelFunctions),
 				Temperature = 0.1,
-				Seed = ReviewerSeed < 0 ? seed : ReviewerSeed,
+                MaxTokens = setting.Current.MaxOutTokens,
+                Seed = ReviewerSeed < 0 ? seed : ReviewerSeed,
 			};
 
-			Log.Logger.Information("Reviewer初始化成功, Seed:{Seed}  Temperature:{Temperature}", settings.Seed, settings.Temperature);
+            if (context.ChatHistory.TryGetValue(AgentType.Reviewer, out ChatHistory? value))
+            {
+                chatHistory = value;
+            }
+            Log.Logger.Information("Reviewer初始化成功, Seed:{Seed}  Temperature:{Temperature}", settings.Seed, settings.Temperature);
 		}
 
 		/// <summary>

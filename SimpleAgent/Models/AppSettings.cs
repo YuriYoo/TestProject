@@ -45,11 +45,14 @@ namespace SimpleAgent.Models
         /// <summary>最大思考轮次</summary>
         public int MaxThinkingRounds { get; set; } = 100;
 
-        /// <summary>子代理最大开发轮次</summary>
+        /// <summary>子代理最大思考轮次</summary>
         public int SubMaxThinkingRounds { get; set; } = 100;
 
         /// <summary>AI输出最大Token数</summary>
-        public int MaxTokens { get; set; } = 128000;
+        public int MaxOutTokens { get; set; } = 128000;
+
+        /// <summary>模型上下文长度</summary>
+        public int MaxTokens { get; set; } = 200000;
 
         /// <summary>上下文压缩阈值(%)</summary>
         public int ContextCompressionThreshold { get; set; } = 80;
@@ -62,6 +65,6 @@ namespace SimpleAgent.Models
         /// 默认工作目录
         /// AI生成的代码将在此目录下创建和操作文件
         /// </summary>
-        public string WorkingDirectory { get; set; } = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + "\\AICoder";
+        //public string WorkingDirectory { get; set; } = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + "\\AICoder";
     }
 }

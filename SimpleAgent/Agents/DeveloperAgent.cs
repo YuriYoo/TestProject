@@ -14,6 +14,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace SimpleAgent.Agents
 {
@@ -37,7 +38,7 @@ namespace SimpleAgent.Agents
 # Constraints
 - 不要向用户提问，你必须自己解决项目中遇到的所有问题。
 - 不要回答用户的消息，你只需要专注于完成任务。
-- 【关键指令】任何涉及项目创建、代码编写、重构或 Bug 修复，你必须调用 `delegate_sub_task` 委派给子代理完成，你只负责阅读源码进行任务拆解，以及在子代理完成后运行测试验收。
+- 【关键指令】不管是什么任务你都必须调用 `delegate_sub_task` 委派给子代理完成，你只负责阅读源码进行任务拆解，以及在子代理完成后运行测试验收。
 - 【关键指令】合理利用子代理，你需要将任务分给多个子代理，不要让一子代理负责所有任务。
 - 【关键指令】只有当所有任务都已经完成，且你在本地运行的编译和测试全部通过后，你才可以停止。
 - 【关键指令】当你停止时才允许且必须调用 `submit_for_review` 函数，并在参数中附上你修改了哪些文件的简要总结。";
@@ -45,14 +46,14 @@ namespace SimpleAgent.Agents
 
 		public AgentType Type => AgentType.Developer;
 		private readonly IStreamingExecutionEngine executionEngine;
-		private readonly ISettingsService settingsService;
 		private readonly IChatHistoryReducer historyReducer;
+        private readonly ISettingsService setting;
 
-		public DeveloperAgent(IKernelService kernelService, IChatHistoryReducer historyReducer, ISettingsService settingsService, IStreamingExecutionEngine executionEngine, AgentContext context) : base(SystemPrompt, context)
+        public DeveloperAgent(IKernelService kernelService, IChatHistoryReducer historyReducer, ISettingsService setting, IStreamingExecutionEngine executionEngine, AgentContext context) : base(SystemPrompt, context)
 		{
 			this.executionEngine = executionEngine;
+			this.setting = setting;
 			this.historyReducer = historyReducer;
-			this.settingsService = settingsService;
 
 			kernel = kernelService.BuildKernel(context);
 			KernelFunction[] kernelFunctions = [
@@ -79,10 +80,15 @@ namespace SimpleAgent.Agents
 			{
 				FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(kernelFunctions),
 				Temperature = 0.2,
-				Seed = DeveloperSeed < 0 ? seed : DeveloperSeed,
+                MaxTokens = setting.Current.MaxOutTokens,
+                Seed = DeveloperSeed < 0 ? seed : DeveloperSeed,
 			};
 
-			Log.Information("Developer初始化成功, Seed:{Seed}  Temperature:{Temperature}", settings.Seed, settings.Temperature);
+            if (context.ChatHistory.TryGetValue(AgentType.Developer, out ChatHistory? value))
+            {
+                chatHistory = value;
+            }
+            Log.Information("Developer初始化成功, Seed:{Seed}  Temperature:{Temperature}", settings.Seed, settings.Temperature);
 		}
 
 		/// <summary>

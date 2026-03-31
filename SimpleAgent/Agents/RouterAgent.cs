@@ -15,10 +15,10 @@ using System.Threading.Tasks;
 
 namespace SimpleAgent.Agents
 {
-	public class RouterAgent : BaseAgent, IWorkflowAgent
-	{
-		public const string NickName = "路由智能体";
-		private const string SystemPrompt = @"
+    public class RouterAgent : BaseAgent, IWorkflowAgent
+    {
+        public const string NickName = "路由智能体";
+        private const string SystemPrompt = @"
 # Role
 你是一个智能请求路由系统。
 
@@ -35,59 +35,62 @@ namespace SimpleAgent.Agents
 3. 你只需要调用工具，不要输出任何解释、不要与用户打招呼、不要与用户对话。
 4. 你必须调用以下两个函数之一，且只能调用一次： `route_to_planner` 或 `route_to_developer` ";
 
-		public AgentType Type => AgentType.Router;
-		private readonly IStreamingExecutionEngine executionEngine;
+        public AgentType Type => AgentType.Router;
+        private readonly IStreamingExecutionEngine executionEngine;
+        private readonly ISettingsService setting;
 
-		public RouterAgent(IKernelService kernelService, IStreamingExecutionEngine executionEngine, AgentContext context) : base(SystemPrompt, context)
-		{
-			this.executionEngine = executionEngine;
+        public RouterAgent(IKernelService kernelService, IStreamingExecutionEngine executionEngine, ISettingsService setting, AgentContext context) : base(SystemPrompt, context)
+        {
+            this.executionEngine = executionEngine;
+            this.setting = setting;
 
-			kernel = kernelService.BuildKernel(context);
-			KernelFunction[] kernelFunctions = [
-				kernel.Plugins.GetFunction("workflow", "route_to_developer"),
-				kernel.Plugins.GetFunction("workflow", "route_to_planner"),
-			];
+            kernel = kernelService.BuildKernel(context);
+            KernelFunction[] kernelFunctions = [
+                kernel.Plugins.GetFunction("workflow", "route_to_developer"),
+                kernel.Plugins.GetFunction("workflow", "route_to_planner"),
+            ];
 
-			chatCompletionService = kernel.GetRequiredService<IChatCompletionService>();
-			settings = new OpenAIPromptExecutionSettings
-			{
-				FunctionChoiceBehavior = FunctionChoiceBehavior.Required(kernelFunctions),
-				Temperature = 0.2,
-				Seed = RouterSeed < 0 ? seed : RouterSeed,
-			};
+            chatCompletionService = kernel.GetRequiredService<IChatCompletionService>();
+            settings = new OpenAIPromptExecutionSettings
+            {
+                FunctionChoiceBehavior = FunctionChoiceBehavior.Required(kernelFunctions),
+                Temperature = 0.2,
+                MaxTokens = setting.Current.MaxOutTokens,
+                Seed = RouterSeed < 0 ? seed : RouterSeed,
+            };
 
-			Log.Logger.Information("Router初始化成功, Seed:{Seed}  Temperature:{Temperature}", settings.Seed, settings.Temperature);
-		}
+            Log.Logger.Information("Router初始化成功, Seed:{Seed}  Temperature:{Temperature}", settings.Seed, settings.Temperature);
+        }
 
-		/// <summary>
-		/// 执行
-		/// </summary>
-		/// <param name="cancellationToken"></param>
-		/// <returns></returns>
-		public async Task<WorkflowState> ExecuteAsync(CancellationToken cancellationToken)
-		{
-			Log.Information("Router 正在路由...");
+        /// <summary>
+        /// 执行
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public async Task<WorkflowState> ExecuteAsync(CancellationToken cancellationToken)
+        {
+            Log.Information("Router 正在路由...");
 
-			if (context.ThinkingRounds == 0)
-			{
-				Reset();
-				AddUserMessage($"用户输入: {context.OriginalRequest}");
-			}
-			else
-			{
-				AddUserMessage($"你必须根据你的判断调用以下两个函数之一： `route_to_planner` 或 `route_to_developer` ");
-			}
+            if (context.ThinkingRounds == 0)
+            {
+                Reset();
+                AddUserMessage($"用户输入: {context.OriginalRequest}");
+            }
+            else
+            {
+                AddUserMessage($"你必须根据你的判断调用以下两个函数之一： `route_to_planner` 或 `route_to_developer` ");
+            }
 
-			// 清空 NextState，等待模型执行结果
-			context.NextState = null;
+            // 清空 NextState，等待模型执行结果
+            context.NextState = null;
 
-			// 运行执行引擎，条件是：如果 NextState 被修改，说明工具被调用，流应当中断
-			await executionEngine.ExecuteStreamAsync(this, Type, cancellationToken,
-				() => context.NextState == null,
-				() => Utility.Utility.ChatHistorySave(Type, chatHistory));
+            // 运行执行引擎，条件是：如果 NextState 被修改，说明工具被调用，流应当中断
+            await executionEngine.ExecuteStreamAsync(this, Type, cancellationToken,
+                () => context.NextState == null,
+                () => Utility.Utility.ChatHistorySave(Type, chatHistory));
 
-			// 返回插件赋予的下一个状态；如果没设置，说明没有结束
-			return context.NextState ?? WorkflowState.Routing;
-		}
-	}
+            // 返回插件赋予的下一个状态；如果没设置，说明没有结束
+            return context.NextState ?? WorkflowState.Routing;
+        }
+    }
 }

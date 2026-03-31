@@ -30,9 +30,9 @@ namespace SimpleAgent
                 HttpTimeout = source.HttpTimeout,
                 MaxThinkingRounds = source.MaxThinkingRounds,
                 SubMaxThinkingRounds = source.SubMaxThinkingRounds,
+                MaxOutTokens = source.MaxOutTokens,
                 MaxTokens = source.MaxTokens,
-                ContextCompressionThreshold = source.ContextCompressionThreshold,
-                WorkingDirectory = source.WorkingDirectory
+                ContextCompressionThreshold = source.ContextCompressionThreshold
             };
         }
 
@@ -51,9 +51,8 @@ namespace SimpleAgent
             numMaxThinkingRounds.Value = settings.MaxThinkingRounds;
             numSubMaxThinkingRounds.Value = settings.SubMaxThinkingRounds;
             numMaxTokens.Value = settings.MaxTokens;
+            numMaxOutTokens.Value = settings.MaxOutTokens;
             numContextCompressionThreshold.Value = settings.ContextCompressionThreshold;
-
-            txtWorkingDirectory.Text = settings.WorkingDirectory;
         }
 
         private void ApplySettings()
@@ -71,9 +70,8 @@ namespace SimpleAgent
             settings.MaxThinkingRounds = (int)numMaxThinkingRounds.Value;
             settings.SubMaxThinkingRounds = (int)numSubMaxThinkingRounds.Value;
             settings.MaxTokens = (int)numMaxTokens.Value;
+            settings.MaxOutTokens = (int)numMaxOutTokens.Value;
             settings.ContextCompressionThreshold = (int)numContextCompressionThreshold.Value;
-
-            settings.WorkingDirectory = txtWorkingDirectory.Text;
         }
 
         private void RestoreOriginalSettings()
@@ -90,8 +88,8 @@ namespace SimpleAgent
             settings.MaxThinkingRounds = originalSettings.MaxThinkingRounds;
             settings.SubMaxThinkingRounds = originalSettings.SubMaxThinkingRounds;
             settings.MaxTokens = originalSettings.MaxTokens;
+            settings.MaxOutTokens = originalSettings.MaxOutTokens;
             settings.ContextCompressionThreshold = originalSettings.ContextCompressionThreshold;
-            settings.WorkingDirectory = originalSettings.WorkingDirectory;
         }
 
         private void BtnSave_Click(object sender, EventArgs e)
@@ -122,23 +120,6 @@ namespace SimpleAgent
                 settingsService.Reset();
                 LoadSettings();
                 MessageBox.Show("设置已重置为默认值", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-        }
-
-        private void BtnBrowseWorkingDir_Click(object sender, EventArgs e)
-        {
-            using FolderBrowserDialog dialog = new();
-            dialog.Description = "选择默认工作目录";
-            dialog.ShowNewFolderButton = true;
-
-            if (!string.IsNullOrEmpty(txtWorkingDirectory.Text) && System.IO.Directory.Exists(txtWorkingDirectory.Text))
-            {
-                dialog.SelectedPath = txtWorkingDirectory.Text;
-            }
-
-            if (dialog.ShowDialog() == DialogResult.OK)
-            {
-                txtWorkingDirectory.Text = dialog.SelectedPath;
             }
         }
     }

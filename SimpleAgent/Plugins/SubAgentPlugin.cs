@@ -26,7 +26,7 @@ namespace SimpleAgent.Plugins
         }
 
         [KernelFunction("delegate_sub_task")]
-        [Description("当你需要执行开发一个功能或修复一个Bug等类似任务时，使用此工具唤醒一个子代理去专门完成该部分工作。这能让你保持清晰的全局视野。")]
+        [Description("当你需要执行一个任务时，使用此工具唤醒一个子代理去专门完成该任务。这能让你保持清晰的全局视野。")]
         public async Task<string> DelegateSubTaskAsync(
             [Description("详细的子任务说明（告诉子代理它需要做什么、重点修改哪些文件、如何测试）")] string taskDescription,
             CancellationToken cancellationToken) // SK 会自动注入当前的 cancellationToken

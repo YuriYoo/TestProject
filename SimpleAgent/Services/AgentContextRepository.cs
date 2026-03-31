@@ -60,21 +60,21 @@ namespace SimpleAgent.Services
         {
             // 如果文件不存在，说明是全新的对话，返回 null 让工厂去初始化
             string basePath = GetFilePath(conversationId);
-            if (!Directory.Exists(basePath)) return null;
+            if (!File.Exists(basePath)) return null;
 
             try
             {
                 // 异步读取本地文件并反序列化
                 string contextFilePath = GetFilePath(conversationId);
                 using FileStream stream = File.OpenRead(contextFilePath);
-                var context = await JsonSerializer.DeserializeAsync<AgentContext>(stream);
+                var context = JsonSerializer.Deserialize<AgentContext>(stream);
                 if (context == null) return null;
 
-                var pc = await Load(GetFilePath(conversationId, AgentType.Planner));
+                var pc = Load(GetFilePath(conversationId, AgentType.Planner));
                 context.ChatHistory.Add(AgentType.Planner, pc);
-                var dc = await Load(GetFilePath(conversationId, AgentType.Developer));
+                var dc = Load(GetFilePath(conversationId, AgentType.Developer));
                 context.ChatHistory.Add(AgentType.Developer, dc);
-                var rc = await Load(GetFilePath(conversationId, AgentType.Reviewer));
+                var rc = Load(GetFilePath(conversationId, AgentType.Reviewer));
                 context.ChatHistory.Add(AgentType.Reviewer, rc);
 
                 return context;
@@ -118,6 +118,17 @@ namespace SimpleAgent.Services
         }
 
         /// <summary>
+        /// 删除上下文
+        /// </summary>
+        /// <param name="guid"></param>
+        public void DeleteContext(Guid guid)
+        {
+            var path = Path.Combine(_storageDirectory, guid.ToString());
+            if (!Directory.Exists(path)) return;
+            Directory.Delete(path, true);
+        }
+
+        /// <summary>
         /// 将完整的 ChatHistory 序列化并保存到本地文件
         /// </summary>
         /// <param name="chatHistory">当前的对话历史</param>
@@ -133,13 +144,13 @@ namespace SimpleAgent.Services
         /// </summary>
         /// <param name="filePath">保存路径</param>
         /// <returns>还原后的 ChatHistory 对象，如果文件不存在则返回全新实例</returns>
-        private async Task<ChatHistory> Load(string filePath)
+        private ChatHistory Load(string filePath)
         {
             // 如果文件不存在，直接返回一个空的 ChatHistory
             if (!File.Exists(filePath)) return [];
 
             using FileStream stream = File.OpenRead(filePath);
-            var context = await JsonSerializer.DeserializeAsync<ChatHistory>(stream);
+            var context = JsonSerializer.Deserialize<ChatHistory>(stream);
 
             // 确保不会返回 null
             return context ?? [];

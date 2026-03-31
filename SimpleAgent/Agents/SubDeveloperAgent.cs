@@ -5,6 +5,7 @@ using Serilog;
 using SimpleAgent.Models;
 using SimpleAgent.Plugins;
 using SimpleAgent.Services;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace SimpleAgent.Agents
 {
@@ -35,16 +36,16 @@ namespace SimpleAgent.Agents
 
         public AgentType Type => AgentType.SubDeveloper;
         private readonly IStreamingExecutionEngine executionEngine;
-        private readonly ISettingsService settingsService;
+        private readonly ISettingsService setting;
 
         // 用于控制子代理生命周期的内部状态
         private bool _isFinished = false;
         private string _subAgentResult = string.Empty;
 
-        public SubDeveloperAgent(IKernelService kernelService, ISettingsService settingsService, IStreamingExecutionEngine executionEngine, AgentContext context) : base(SystemPrompt, context)
+        public SubDeveloperAgent(IKernelService kernelService, IStreamingExecutionEngine executionEngine, ISettingsService setting, AgentContext context) : base(SystemPrompt, context)
         {
             this.executionEngine = executionEngine;
-            this.settingsService = settingsService;
+            this.setting = setting;
 
             kernel = kernelService.BuildKernel(context);
             var sub = new SubWorkflowPlugin()
@@ -80,6 +81,7 @@ namespace SimpleAgent.Agents
             {
                 FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(kernelFunctions),
                 Temperature = 0.1, // 子代理需要更稳定的输出
+                MaxTokens = setting.Current.MaxOutTokens,
                 Seed = seed,
             };
             Log.Information("SubDeveloper初始化成功, Seed:{Seed}  Temperature:{Temperature}", settings.Seed, settings.Temperature);
@@ -103,7 +105,7 @@ namespace SimpleAgent.Agents
             AddUserMessage($"主代理交给了你一项任务：\n{taskDescription}");
 
             int safetyCounter = 0;
-            while (!_isFinished && safetyCounter < settingsService.Current.SubMaxThinkingRounds)
+            while (!_isFinished && safetyCounter < setting.Current.SubMaxThinkingRounds)
             {
                 safetyCounter++;
 

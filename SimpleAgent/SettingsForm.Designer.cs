@@ -29,6 +29,8 @@ namespace SimpleAgent
             txtModelId = new TextBox();
             AgentGroup = new GroupBox();
             AgentLayout = new TableLayoutPanel();
+            numMaxOutTokens = new NumericUpDown();
+            lblMaxOutTokens = new Label();
             lblTerminalTruncation = new Label();
             numTerminalTruncation = new NumericUpDown();
             lblTerminalTimeout = new Label();
@@ -45,11 +47,6 @@ namespace SimpleAgent
             numMaxTokens = new NumericUpDown();
             lblContextCompressionThreshold = new Label();
             numContextCompressionThreshold = new NumericUpDown();
-            WorkingDirGroup = new GroupBox();
-            WorkingDirLayout = new TableLayoutPanel();
-            lblWorkingDirectory = new Label();
-            txtWorkingDirectory = new TextBox();
-            btnBrowseWorkingDir = new SimpleAgent.UserControls.FlatButton();
             ButtonPanel = new Panel();
             btnReset = new SimpleAgent.UserControls.FlatButton();
             btnCancel = new SimpleAgent.UserControls.FlatButton();
@@ -60,6 +57,7 @@ namespace SimpleAgent
             AIServiceLayout.SuspendLayout();
             AgentGroup.SuspendLayout();
             AgentLayout.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)numMaxOutTokens).BeginInit();
             ((System.ComponentModel.ISupportInitialize)numTerminalTruncation).BeginInit();
             ((System.ComponentModel.ISupportInitialize)numTerminalTimeout).BeginInit();
             ((System.ComponentModel.ISupportInitialize)numHttpTerminal).BeginInit();
@@ -68,8 +66,6 @@ namespace SimpleAgent
             ((System.ComponentModel.ISupportInitialize)numSubMaxThinkingRounds).BeginInit();
             ((System.ComponentModel.ISupportInitialize)numMaxTokens).BeginInit();
             ((System.ComponentModel.ISupportInitialize)numContextCompressionThreshold).BeginInit();
-            WorkingDirGroup.SuspendLayout();
-            WorkingDirLayout.SuspendLayout();
             ButtonPanel.SuspendLayout();
             SuspendLayout();
             // 
@@ -95,7 +91,6 @@ namespace SimpleAgent
             ContentPanel.BackColor = Color.WhiteSmoke;
             ContentPanel.Controls.Add(AIServiceGroup);
             ContentPanel.Controls.Add(AgentGroup);
-            ContentPanel.Controls.Add(WorkingDirGroup);
             ContentPanel.Dock = DockStyle.Fill;
             ContentPanel.Location = new Point(13, 13);
             ContentPanel.Name = "ContentPanel";
@@ -104,11 +99,11 @@ namespace SimpleAgent
             // 
             // AIServiceGroup
             // 
-            AIServiceGroup.BackColor = Color.White;
             AIServiceGroup.Controls.Add(AIServiceLayout);
             AIServiceGroup.Dock = DockStyle.Top;
             AIServiceGroup.Font = new Font("Microsoft YaHei UI", 9F, FontStyle.Bold);
-            AIServiceGroup.Location = new Point(0, 400);
+            AIServiceGroup.Location = new Point(0, 324);
+            AIServiceGroup.Margin = new Padding(0);
             AIServiceGroup.Name = "AIServiceGroup";
             AIServiceGroup.Padding = new Padding(8);
             AIServiceGroup.Size = new Size(574, 140);
@@ -119,7 +114,7 @@ namespace SimpleAgent
             // AIServiceLayout
             // 
             AIServiceLayout.ColumnCount = 2;
-            AIServiceLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120F));
+            AIServiceLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 160F));
             AIServiceLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             AIServiceLayout.Controls.Add(lblApiKey, 0, 0);
             AIServiceLayout.Controls.Add(txtApiKey, 1, 0);
@@ -129,6 +124,7 @@ namespace SimpleAgent
             AIServiceLayout.Controls.Add(txtModelId, 1, 2);
             AIServiceLayout.Dock = DockStyle.Fill;
             AIServiceLayout.Location = new Point(8, 24);
+            AIServiceLayout.Margin = new Padding(0);
             AIServiceLayout.Name = "AIServiceLayout";
             AIServiceLayout.Padding = new Padding(5);
             AIServiceLayout.RowCount = 3;
@@ -140,75 +136,81 @@ namespace SimpleAgent
             // 
             // lblApiKey
             // 
-            lblApiKey.Anchor = AnchorStyles.Left;
             lblApiKey.AutoSize = true;
+            lblApiKey.Dock = DockStyle.Fill;
             lblApiKey.Font = new Font("Microsoft YaHei UI", 9F);
-            lblApiKey.Location = new Point(8, 12);
+            lblApiKey.Location = new Point(5, 5);
+            lblApiKey.Margin = new Padding(0);
             lblApiKey.Name = "lblApiKey";
-            lblApiKey.Size = new Size(58, 17);
+            lblApiKey.Size = new Size(160, 32);
             lblApiKey.TabIndex = 0;
             lblApiKey.Text = "API 密钥:";
+            lblApiKey.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // txtApiKey
             // 
             txtApiKey.Dock = DockStyle.Fill;
             txtApiKey.Font = new Font("Microsoft YaHei UI", 9F);
-            txtApiKey.Location = new Point(128, 8);
+            txtApiKey.Location = new Point(168, 8);
             txtApiKey.Name = "txtApiKey";
             txtApiKey.PasswordChar = '●';
-            txtApiKey.Size = new Size(422, 23);
+            txtApiKey.Size = new Size(382, 23);
             txtApiKey.TabIndex = 1;
             // 
             // lblApiBaseUrl
             // 
-            lblApiBaseUrl.Anchor = AnchorStyles.Left;
             lblApiBaseUrl.AutoSize = true;
+            lblApiBaseUrl.Dock = DockStyle.Fill;
             lblApiBaseUrl.Font = new Font("Microsoft YaHei UI", 9F);
-            lblApiBaseUrl.Location = new Point(8, 44);
+            lblApiBaseUrl.Location = new Point(5, 37);
+            lblApiBaseUrl.Margin = new Padding(0);
             lblApiBaseUrl.Name = "lblApiBaseUrl";
-            lblApiBaseUrl.Size = new Size(81, 17);
+            lblApiBaseUrl.Size = new Size(160, 32);
             lblApiBaseUrl.TabIndex = 2;
             lblApiBaseUrl.Text = "API 基础URL:";
+            lblApiBaseUrl.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // txtApiBaseUrl
             // 
             txtApiBaseUrl.Dock = DockStyle.Fill;
             txtApiBaseUrl.Font = new Font("Microsoft YaHei UI", 9F);
-            txtApiBaseUrl.Location = new Point(128, 40);
+            txtApiBaseUrl.Location = new Point(168, 40);
             txtApiBaseUrl.Name = "txtApiBaseUrl";
-            txtApiBaseUrl.Size = new Size(422, 23);
+            txtApiBaseUrl.Size = new Size(382, 23);
             txtApiBaseUrl.TabIndex = 3;
             // 
             // lblModelId
             // 
-            lblModelId.Anchor = AnchorStyles.Left;
             lblModelId.AutoSize = true;
+            lblModelId.Dock = DockStyle.Fill;
             lblModelId.Font = new Font("Microsoft YaHei UI", 9F);
-            lblModelId.Location = new Point(8, 77);
+            lblModelId.Location = new Point(5, 69);
+            lblModelId.Margin = new Padding(0);
             lblModelId.Name = "lblModelId";
-            lblModelId.Size = new Size(71, 17);
+            lblModelId.Size = new Size(160, 34);
             lblModelId.TabIndex = 4;
             lblModelId.Text = "模型标识符:";
+            lblModelId.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // txtModelId
             // 
             txtModelId.Dock = DockStyle.Fill;
             txtModelId.Font = new Font("Microsoft YaHei UI", 9F);
-            txtModelId.Location = new Point(128, 72);
+            txtModelId.Location = new Point(168, 72);
             txtModelId.Name = "txtModelId";
-            txtModelId.Size = new Size(422, 23);
+            txtModelId.Size = new Size(382, 23);
             txtModelId.TabIndex = 5;
             // 
             // AgentGroup
             // 
-            AgentGroup.BackColor = Color.White;
             AgentGroup.Controls.Add(AgentLayout);
             AgentGroup.Dock = DockStyle.Top;
             AgentGroup.Font = new Font("Microsoft YaHei UI", 9F, FontStyle.Bold);
-            AgentGroup.Location = new Point(0, 80);
+            AgentGroup.Location = new Point(0, 0);
+            AgentGroup.Margin = new Padding(0);
             AgentGroup.Name = "AgentGroup";
             AgentGroup.Padding = new Padding(8);
-            AgentGroup.Size = new Size(574, 320);
+            AgentGroup.Size = new Size(574, 324);
             AgentGroup.TabIndex = 1;
             AgentGroup.TabStop = false;
             AgentGroup.Text = "智能体配置";
@@ -218,6 +220,8 @@ namespace SimpleAgent
             AgentLayout.ColumnCount = 2;
             AgentLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 160F));
             AgentLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            AgentLayout.Controls.Add(numMaxOutTokens, 1, 7);
+            AgentLayout.Controls.Add(lblMaxOutTokens, 0, 7);
             AgentLayout.Controls.Add(lblTerminalTruncation, 0, 0);
             AgentLayout.Controls.Add(numTerminalTruncation, 1, 0);
             AgentLayout.Controls.Add(lblTerminalTimeout, 0, 1);
@@ -232,13 +236,15 @@ namespace SimpleAgent
             AgentLayout.Controls.Add(numSubMaxThinkingRounds, 1, 5);
             AgentLayout.Controls.Add(lblMaxTokens, 0, 6);
             AgentLayout.Controls.Add(numMaxTokens, 1, 6);
-            AgentLayout.Controls.Add(lblContextCompressionThreshold, 0, 7);
-            AgentLayout.Controls.Add(numContextCompressionThreshold, 1, 7);
+            AgentLayout.Controls.Add(lblContextCompressionThreshold, 0, 8);
+            AgentLayout.Controls.Add(numContextCompressionThreshold, 1, 8);
             AgentLayout.Dock = DockStyle.Fill;
             AgentLayout.Location = new Point(8, 24);
+            AgentLayout.Margin = new Padding(0);
+            AgentLayout.MinimumSize = new Size(0, 266);
             AgentLayout.Name = "AgentLayout";
             AgentLayout.Padding = new Padding(5);
-            AgentLayout.RowCount = 8;
+            AgentLayout.RowCount = 9;
             AgentLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32F));
             AgentLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32F));
             AgentLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32F));
@@ -247,19 +253,46 @@ namespace SimpleAgent
             AgentLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32F));
             AgentLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32F));
             AgentLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32F));
-            AgentLayout.Size = new Size(558, 288);
+            AgentLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32F));
+            AgentLayout.Size = new Size(558, 292);
             AgentLayout.TabIndex = 0;
+            // 
+            // numMaxOutTokens
+            // 
+            numMaxOutTokens.Dock = DockStyle.Fill;
+            numMaxOutTokens.Font = new Font("Microsoft YaHei UI", 9F);
+            numMaxOutTokens.Location = new Point(168, 232);
+            numMaxOutTokens.Maximum = new decimal(new int[] { 1000000, 0, 0, 0 });
+            numMaxOutTokens.Name = "numMaxOutTokens";
+            numMaxOutTokens.Size = new Size(382, 23);
+            numMaxOutTokens.TabIndex = 18;
+            numMaxOutTokens.ThousandsSeparator = true;
+            // 
+            // lblMaxOutTokens
+            // 
+            lblMaxOutTokens.AutoSize = true;
+            lblMaxOutTokens.Dock = DockStyle.Fill;
+            lblMaxOutTokens.Font = new Font("Microsoft YaHei UI", 9F);
+            lblMaxOutTokens.Location = new Point(5, 229);
+            lblMaxOutTokens.Margin = new Padding(0);
+            lblMaxOutTokens.Name = "lblMaxOutTokens";
+            lblMaxOutTokens.Size = new Size(160, 32);
+            lblMaxOutTokens.TabIndex = 17;
+            lblMaxOutTokens.Text = "单次输出最大Token:";
+            lblMaxOutTokens.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // lblTerminalTruncation
             // 
-            lblTerminalTruncation.Anchor = AnchorStyles.Left;
             lblTerminalTruncation.AutoSize = true;
+            lblTerminalTruncation.Dock = DockStyle.Fill;
             lblTerminalTruncation.Font = new Font("Microsoft YaHei UI", 9F);
-            lblTerminalTruncation.Location = new Point(8, 12);
+            lblTerminalTruncation.Location = new Point(5, 5);
+            lblTerminalTruncation.Margin = new Padding(0);
             lblTerminalTruncation.Name = "lblTerminalTruncation";
-            lblTerminalTruncation.Size = new Size(95, 17);
+            lblTerminalTruncation.Size = new Size(160, 32);
             lblTerminalTruncation.TabIndex = 0;
             lblTerminalTruncation.Text = "命令行输出截断:";
+            lblTerminalTruncation.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // numTerminalTruncation
             // 
@@ -274,14 +307,16 @@ namespace SimpleAgent
             // 
             // lblTerminalTimeout
             // 
-            lblTerminalTimeout.Anchor = AnchorStyles.Left;
             lblTerminalTimeout.AutoSize = true;
+            lblTerminalTimeout.Dock = DockStyle.Fill;
             lblTerminalTimeout.Font = new Font("Microsoft YaHei UI", 9F);
-            lblTerminalTimeout.Location = new Point(8, 44);
+            lblTerminalTimeout.Location = new Point(5, 37);
+            lblTerminalTimeout.Margin = new Padding(0);
             lblTerminalTimeout.Name = "lblTerminalTimeout";
-            lblTerminalTimeout.Size = new Size(120, 17);
+            lblTerminalTimeout.Size = new Size(160, 32);
             lblTerminalTimeout.TabIndex = 2;
             lblTerminalTimeout.Text = "命令行超时时间(ms):";
+            lblTerminalTimeout.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // numTerminalTimeout
             // 
@@ -296,14 +331,16 @@ namespace SimpleAgent
             // 
             // lblHttpTerminal
             // 
-            lblHttpTerminal.Anchor = AnchorStyles.Left;
             lblHttpTerminal.AutoSize = true;
+            lblHttpTerminal.Dock = DockStyle.Fill;
             lblHttpTerminal.Font = new Font("Microsoft YaHei UI", 9F);
-            lblHttpTerminal.Location = new Point(8, 76);
+            lblHttpTerminal.Location = new Point(5, 69);
+            lblHttpTerminal.Margin = new Padding(0);
             lblHttpTerminal.Name = "lblHttpTerminal";
-            lblHttpTerminal.Size = new Size(89, 17);
+            lblHttpTerminal.Size = new Size(160, 32);
             lblHttpTerminal.TabIndex = 4;
             lblHttpTerminal.Text = "HTTP响应截断:";
+            lblHttpTerminal.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // numHttpTerminal
             // 
@@ -318,14 +355,16 @@ namespace SimpleAgent
             // 
             // lblHttpTimeout
             // 
-            lblHttpTimeout.Anchor = AnchorStyles.Left;
             lblHttpTimeout.AutoSize = true;
+            lblHttpTimeout.Dock = DockStyle.Fill;
             lblHttpTimeout.Font = new Font("Microsoft YaHei UI", 9F);
-            lblHttpTimeout.Location = new Point(8, 108);
+            lblHttpTimeout.Location = new Point(5, 101);
+            lblHttpTimeout.Margin = new Padding(0);
             lblHttpTimeout.Name = "lblHttpTimeout";
-            lblHttpTimeout.Size = new Size(114, 17);
+            lblHttpTimeout.Size = new Size(160, 32);
             lblHttpTimeout.TabIndex = 6;
             lblHttpTimeout.Text = "HTTP请求超时(ms):";
+            lblHttpTimeout.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // numHttpTimeout
             // 
@@ -340,14 +379,16 @@ namespace SimpleAgent
             // 
             // lblMaxThinkingRounds
             // 
-            lblMaxThinkingRounds.Anchor = AnchorStyles.Left;
             lblMaxThinkingRounds.AutoSize = true;
+            lblMaxThinkingRounds.Dock = DockStyle.Fill;
             lblMaxThinkingRounds.Font = new Font("Microsoft YaHei UI", 9F);
-            lblMaxThinkingRounds.Location = new Point(8, 140);
+            lblMaxThinkingRounds.Location = new Point(5, 133);
+            lblMaxThinkingRounds.Margin = new Padding(0);
             lblMaxThinkingRounds.Name = "lblMaxThinkingRounds";
-            lblMaxThinkingRounds.Size = new Size(83, 17);
+            lblMaxThinkingRounds.Size = new Size(160, 32);
             lblMaxThinkingRounds.TabIndex = 8;
-            lblMaxThinkingRounds.Text = "最大思考轮次:";
+            lblMaxThinkingRounds.Text = "模型最大思考轮次:";
+            lblMaxThinkingRounds.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // numMaxThinkingRounds
             // 
@@ -361,14 +402,16 @@ namespace SimpleAgent
             // 
             // lblSubMaxThinkingRounds
             // 
-            lblSubMaxThinkingRounds.Anchor = AnchorStyles.Left;
             lblSubMaxThinkingRounds.AutoSize = true;
+            lblSubMaxThinkingRounds.Dock = DockStyle.Fill;
             lblSubMaxThinkingRounds.Font = new Font("Microsoft YaHei UI", 9F);
-            lblSubMaxThinkingRounds.Location = new Point(8, 172);
+            lblSubMaxThinkingRounds.Location = new Point(5, 165);
+            lblSubMaxThinkingRounds.Margin = new Padding(0);
             lblSubMaxThinkingRounds.Name = "lblSubMaxThinkingRounds";
-            lblSubMaxThinkingRounds.Size = new Size(119, 17);
+            lblSubMaxThinkingRounds.Size = new Size(160, 32);
             lblSubMaxThinkingRounds.TabIndex = 10;
-            lblSubMaxThinkingRounds.Text = "子代理最大开发轮次:";
+            lblSubMaxThinkingRounds.Text = "子代理最大思考轮次:";
+            lblSubMaxThinkingRounds.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // numSubMaxThinkingRounds
             // 
@@ -382,14 +425,16 @@ namespace SimpleAgent
             // 
             // lblMaxTokens
             // 
-            lblMaxTokens.Anchor = AnchorStyles.Left;
             lblMaxTokens.AutoSize = true;
+            lblMaxTokens.Dock = DockStyle.Fill;
             lblMaxTokens.Font = new Font("Microsoft YaHei UI", 9F);
-            lblMaxTokens.Location = new Point(8, 204);
+            lblMaxTokens.Location = new Point(5, 197);
+            lblMaxTokens.Margin = new Padding(0);
             lblMaxTokens.Name = "lblMaxTokens";
-            lblMaxTokens.Size = new Size(107, 17);
+            lblMaxTokens.Size = new Size(160, 32);
             lblMaxTokens.TabIndex = 12;
-            lblMaxTokens.Text = "AI输出最大Token:";
+            lblMaxTokens.Text = "模型最大上下文:";
+            lblMaxTokens.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // numMaxTokens
             // 
@@ -404,101 +449,38 @@ namespace SimpleAgent
             // 
             // lblContextCompressionThreshold
             // 
-            lblContextCompressionThreshold.Anchor = AnchorStyles.Left;
             lblContextCompressionThreshold.AutoSize = true;
+            lblContextCompressionThreshold.Dock = DockStyle.Fill;
             lblContextCompressionThreshold.Font = new Font("Microsoft YaHei UI", 9F);
-            lblContextCompressionThreshold.Location = new Point(8, 247);
+            lblContextCompressionThreshold.Location = new Point(5, 261);
+            lblContextCompressionThreshold.Margin = new Padding(0);
             lblContextCompressionThreshold.Name = "lblContextCompressionThreshold";
-            lblContextCompressionThreshold.Size = new Size(114, 17);
-            lblContextCompressionThreshold.TabIndex = 14;
+            lblContextCompressionThreshold.Size = new Size(160, 32);
+            lblContextCompressionThreshold.TabIndex = 16;
             lblContextCompressionThreshold.Text = "上下文压缩阈值(%):";
+            lblContextCompressionThreshold.TextAlign = ContentAlignment.MiddleLeft;
             // 
             // numContextCompressionThreshold
             // 
             numContextCompressionThreshold.Dock = DockStyle.Fill;
             numContextCompressionThreshold.Font = new Font("Microsoft YaHei UI", 9F);
-            numContextCompressionThreshold.Location = new Point(168, 232);
+            numContextCompressionThreshold.Location = new Point(168, 264);
             numContextCompressionThreshold.Name = "numContextCompressionThreshold";
             numContextCompressionThreshold.Size = new Size(382, 23);
             numContextCompressionThreshold.TabIndex = 15;
             // 
-            // WorkingDirGroup
-            // 
-            WorkingDirGroup.BackColor = Color.White;
-            WorkingDirGroup.Controls.Add(WorkingDirLayout);
-            WorkingDirGroup.Dock = DockStyle.Top;
-            WorkingDirGroup.Font = new Font("Microsoft YaHei UI", 9F, FontStyle.Bold);
-            WorkingDirGroup.Location = new Point(0, 0);
-            WorkingDirGroup.Name = "WorkingDirGroup";
-            WorkingDirGroup.Padding = new Padding(8);
-            WorkingDirGroup.Size = new Size(574, 80);
-            WorkingDirGroup.TabIndex = 2;
-            WorkingDirGroup.TabStop = false;
-            WorkingDirGroup.Text = "工作目录配置";
-            // 
-            // WorkingDirLayout
-            // 
-            WorkingDirLayout.ColumnCount = 3;
-            WorkingDirLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100F));
-            WorkingDirLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            WorkingDirLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 80F));
-            WorkingDirLayout.Controls.Add(lblWorkingDirectory, 0, 0);
-            WorkingDirLayout.Controls.Add(txtWorkingDirectory, 1, 0);
-            WorkingDirLayout.Controls.Add(btnBrowseWorkingDir, 2, 0);
-            WorkingDirLayout.Dock = DockStyle.Fill;
-            WorkingDirLayout.Location = new Point(8, 24);
-            WorkingDirLayout.Name = "WorkingDirLayout";
-            WorkingDirLayout.Padding = new Padding(5);
-            WorkingDirLayout.RowCount = 1;
-            WorkingDirLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32F));
-            WorkingDirLayout.Size = new Size(558, 48);
-            WorkingDirLayout.TabIndex = 0;
-            // 
-            // lblWorkingDirectory
-            // 
-            lblWorkingDirectory.Anchor = AnchorStyles.Left;
-            lblWorkingDirectory.AutoSize = true;
-            lblWorkingDirectory.Font = new Font("Microsoft YaHei UI", 9F);
-            lblWorkingDirectory.Location = new Point(8, 15);
-            lblWorkingDirectory.Name = "lblWorkingDirectory";
-            lblWorkingDirectory.Size = new Size(59, 17);
-            lblWorkingDirectory.TabIndex = 0;
-            lblWorkingDirectory.Text = "工作目录:";
-            // 
-            // txtWorkingDirectory
-            // 
-            txtWorkingDirectory.Dock = DockStyle.Fill;
-            txtWorkingDirectory.Font = new Font("Microsoft YaHei UI", 9F);
-            txtWorkingDirectory.Location = new Point(108, 8);
-            txtWorkingDirectory.Name = "txtWorkingDirectory";
-            txtWorkingDirectory.ReadOnly = true;
-            txtWorkingDirectory.Size = new Size(362, 23);
-            txtWorkingDirectory.TabIndex = 1;
-            // 
-            // btnBrowseWorkingDir
-            // 
-            btnBrowseWorkingDir.BackColor = Color.White;
-            btnBrowseWorkingDir.Dock = DockStyle.Fill;
-            btnBrowseWorkingDir.FlatStyle = FlatStyle.Flat;
-            btnBrowseWorkingDir.Font = new Font("Microsoft YaHei UI", 9F);
-            btnBrowseWorkingDir.Location = new Point(476, 8);
-            btnBrowseWorkingDir.Name = "btnBrowseWorkingDir";
-            btnBrowseWorkingDir.Size = new Size(74, 32);
-            btnBrowseWorkingDir.TabIndex = 2;
-            btnBrowseWorkingDir.Text = "浏览...";
-            btnBrowseWorkingDir.UseVisualStyleBackColor = true;
-            btnBrowseWorkingDir.Click += BtnBrowseWorkingDir_Click;
-            // 
             // ButtonPanel
             // 
+            ButtonPanel.AutoSize = true;
             ButtonPanel.BackColor = Color.WhiteSmoke;
             ButtonPanel.Controls.Add(btnReset);
             ButtonPanel.Controls.Add(btnCancel);
             ButtonPanel.Controls.Add(btnSave);
             ButtonPanel.Dock = DockStyle.Fill;
-            ButtonPanel.Location = new Point(13, 643);
+            ButtonPanel.Location = new Point(10, 640);
+            ButtonPanel.Margin = new Padding(0);
             ButtonPanel.Name = "ButtonPanel";
-            ButtonPanel.Size = new Size(574, 44);
+            ButtonPanel.Size = new Size(580, 50);
             ButtonPanel.TabIndex = 0;
             // 
             // btnReset
@@ -510,7 +492,7 @@ namespace SimpleAgent
             btnReset.FlatStyle = FlatStyle.Flat;
             btnReset.Font = new Font("Microsoft YaHei UI", 9F);
             btnReset.ForeColor = Color.White;
-            btnReset.Location = new Point(299, 8);
+            btnReset.Location = new Point(325, 3);
             btnReset.Name = "btnReset";
             btnReset.Size = new Size(80, 32);
             btnReset.TabIndex = 2;
@@ -527,7 +509,7 @@ namespace SimpleAgent
             btnCancel.FlatStyle = FlatStyle.Flat;
             btnCancel.Font = new Font("Microsoft YaHei UI", 9F);
             btnCancel.ForeColor = Color.White;
-            btnCancel.Location = new Point(479, 8);
+            btnCancel.Location = new Point(411, 3);
             btnCancel.Name = "btnCancel";
             btnCancel.Size = new Size(80, 32);
             btnCancel.TabIndex = 1;
@@ -544,7 +526,7 @@ namespace SimpleAgent
             btnSave.FlatStyle = FlatStyle.Flat;
             btnSave.Font = new Font("Microsoft YaHei UI", 9F, FontStyle.Bold);
             btnSave.ForeColor = Color.White;
-            btnSave.Location = new Point(389, 8);
+            btnSave.Location = new Point(497, 3);
             btnSave.Name = "btnSave";
             btnSave.Size = new Size(80, 32);
             btnSave.TabIndex = 0;
@@ -567,6 +549,7 @@ namespace SimpleAgent
             StartPosition = FormStartPosition.CenterParent;
             Text = "设置";
             MainPanel.ResumeLayout(false);
+            MainPanel.PerformLayout();
             ContentPanel.ResumeLayout(false);
             AIServiceGroup.ResumeLayout(false);
             AIServiceLayout.ResumeLayout(false);
@@ -574,6 +557,7 @@ namespace SimpleAgent
             AgentGroup.ResumeLayout(false);
             AgentLayout.ResumeLayout(false);
             AgentLayout.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)numMaxOutTokens).EndInit();
             ((System.ComponentModel.ISupportInitialize)numTerminalTruncation).EndInit();
             ((System.ComponentModel.ISupportInitialize)numTerminalTimeout).EndInit();
             ((System.ComponentModel.ISupportInitialize)numHttpTerminal).EndInit();
@@ -582,9 +566,6 @@ namespace SimpleAgent
             ((System.ComponentModel.ISupportInitialize)numSubMaxThinkingRounds).EndInit();
             ((System.ComponentModel.ISupportInitialize)numMaxTokens).EndInit();
             ((System.ComponentModel.ISupportInitialize)numContextCompressionThreshold).EndInit();
-            WorkingDirGroup.ResumeLayout(false);
-            WorkingDirLayout.ResumeLayout(false);
-            WorkingDirLayout.PerformLayout();
             ButtonPanel.ResumeLayout(false);
             ResumeLayout(false);
         }
@@ -621,12 +602,10 @@ namespace SimpleAgent
         private NumericUpDown numSubMaxThinkingRounds;
         private Label lblMaxTokens;
         private NumericUpDown numMaxTokens;
-        private Label lblContextCompressionThreshold;
         private NumericUpDown numContextCompressionThreshold;
-        private GroupBox WorkingDirGroup;
-        private TableLayoutPanel WorkingDirLayout;
-        private Label lblWorkingDirectory;
-        private TextBox txtWorkingDirectory;
         private UserControls.FlatButton btnBrowseWorkingDir;
+        private Label lblMaxOutTokens;
+        private Label lblContextCompressionThreshold;
+        private NumericUpDown numMaxOutTokens;
     }
 }
