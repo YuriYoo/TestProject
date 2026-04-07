@@ -68,6 +68,7 @@ namespace SimpleAgent.Agents
             if (context.ChatHistory.TryGetValue(AgentType.Reviewer, out ChatHistory? value))
             {
                 chatHistory = value;
+                if (chatHistory.Count < 1) chatHistory.AddSystemMessage(SystemPrompt);
             }
             Log.Logger.Information("Reviewer初始化成功, Seed:{Seed}  Temperature:{Temperature}", settings.Seed, settings.Temperature);
 		}

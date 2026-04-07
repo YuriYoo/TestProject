@@ -40,10 +40,13 @@ namespace SimpleAgent.Services
 
         public void Load(Guid guid)
         {
+            PlannerPanel.Controls.Clear();
+            DeveloperPanel.Controls.Clear();
+            ReviewerPanel.Controls.Clear();
+
             var loadPath = Path.Combine(storageDirectory, guid.ToString(), "History");
             if (!Directory.Exists(loadPath)) return;
 
-            PlannerPanel.Controls.Clear();
             var plannerPath = Path.Combine(loadPath, "Planner");
             var files = SortedFiles(plannerPath);
             //PlannerPanel.SuspendLayout();
@@ -57,7 +60,6 @@ namespace SimpleAgent.Services
             }
             PlannerPanel.PerformLayout();
 
-            DeveloperPanel.Controls.Clear();
             var developerPath = Path.Combine(loadPath, "Developer");
             files = SortedFiles(developerPath);
             //DeveloperPanel.SuspendLayout();
@@ -71,7 +73,6 @@ namespace SimpleAgent.Services
             }
             DeveloperPanel.PerformLayout();
 
-            ReviewerPanel.Controls.Clear();
             var reviewerPath = Path.Combine(loadPath, "Reviewer");
             files = SortedFiles(reviewerPath);
             //ReviewerPanel.SuspendLayout();

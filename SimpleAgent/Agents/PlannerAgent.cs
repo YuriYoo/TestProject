@@ -71,6 +71,7 @@ namespace SimpleAgent.Agents
             if (context.ChatHistory.TryGetValue(AgentType.Planner, out ChatHistory? value))
             {
                 chatHistory = value;
+                if (chatHistory.Count < 1) chatHistory.AddSystemMessage(SystemPrompt);
             }
             Log.Information("Planner初始化成功, Seed:{Seed}  Temperature:{Temperature}", settings.Seed, settings.Temperature);
         }

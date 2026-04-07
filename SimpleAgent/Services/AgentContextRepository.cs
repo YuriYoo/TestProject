@@ -71,11 +71,11 @@ namespace SimpleAgent.Services
                 if (context == null) return null;
 
                 var pc = Load(GetFilePath(conversationId, AgentType.Planner));
-                context.ChatHistory.Add(AgentType.Planner, pc);
+                context.ChatHistory.Add(AgentType.Planner, pc ?? []);
                 var dc = Load(GetFilePath(conversationId, AgentType.Developer));
-                context.ChatHistory.Add(AgentType.Developer, dc);
+                context.ChatHistory.Add(AgentType.Developer, dc ?? []);
                 var rc = Load(GetFilePath(conversationId, AgentType.Reviewer));
-                context.ChatHistory.Add(AgentType.Reviewer, rc);
+                context.ChatHistory.Add(AgentType.Reviewer, rc ?? []);
 
                 return context;
             }
@@ -144,16 +144,13 @@ namespace SimpleAgent.Services
         /// </summary>
         /// <param name="filePath">保存路径</param>
         /// <returns>还原后的 ChatHistory 对象，如果文件不存在则返回全新实例</returns>
-        private ChatHistory Load(string filePath)
+        private ChatHistory? Load(string filePath)
         {
             // 如果文件不存在，直接返回一个空的 ChatHistory
-            if (!File.Exists(filePath)) return [];
+            if (!File.Exists(filePath)) return null;
 
             using FileStream stream = File.OpenRead(filePath);
-            var context = JsonSerializer.Deserialize<ChatHistory>(stream);
-
-            // 确保不会返回 null
-            return context ?? [];
+            return JsonSerializer.Deserialize<ChatHistory>(stream);
         }
 
         /// <summary>
