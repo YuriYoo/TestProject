@@ -120,11 +120,13 @@ namespace SimpleAgent.Services
                     if (!keepRunningCondition())
                     {
                         cts.Cancel();
+#if DEBUG
                         if (!isSaveLog && saveLogAction != null)
                         {
                             isSaveLog = true;
                             saveLogAction.Invoke();
                         }
+#endif
                     }
                 }
             }

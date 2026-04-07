@@ -55,9 +55,12 @@ namespace SimpleAgent.Services
             // 自定义兼容端点
             builder.AddOpenAIChatCompletion(settings.Current.ModelId, settings.Current.ApiKey, httpClient: httpClient);
 
+#if DEBUG
+
             // 将自定义的日志拦截器注册到服务中
             builder.Services.AddSingleton<IFunctionInvocationFilter, FunctionLoggingFilter>();
 
+#endif
             // 注册工具
             if (context != null)
             {
