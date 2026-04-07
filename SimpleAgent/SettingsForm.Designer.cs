@@ -48,6 +48,9 @@ namespace SimpleAgent
             lblContextCompressionThreshold = new Label();
             numContextCompressionThreshold = new NumericUpDown();
             ButtonPanel = new Panel();
+            btnReset = new SimpleAgent.UserControls.FlatButton();
+            btnCancel = new SimpleAgent.UserControls.FlatButton();
+            btnSave = new SimpleAgent.UserControls.FlatButton();
             MainPanel.SuspendLayout();
             ContentPanel.SuspendLayout();
             AIServiceGroup.SuspendLayout();
@@ -63,6 +66,7 @@ namespace SimpleAgent
             ((System.ComponentModel.ISupportInitialize)numSubMaxThinkingRounds).BeginInit();
             ((System.ComponentModel.ISupportInitialize)numMaxTokens).BeginInit();
             ((System.ComponentModel.ISupportInitialize)numContextCompressionThreshold).BeginInit();
+            ButtonPanel.SuspendLayout();
             SuspendLayout();
             // 
             // MainPanel
@@ -469,12 +473,66 @@ namespace SimpleAgent
             // 
             ButtonPanel.AutoSize = true;
             ButtonPanel.BackColor = Color.WhiteSmoke;
+            ButtonPanel.Controls.Add(btnReset);
+            ButtonPanel.Controls.Add(btnCancel);
+            ButtonPanel.Controls.Add(btnSave);
             ButtonPanel.Dock = DockStyle.Fill;
             ButtonPanel.Location = new Point(10, 640);
             ButtonPanel.Margin = new Padding(0);
             ButtonPanel.Name = "ButtonPanel";
             ButtonPanel.Size = new Size(580, 50);
             ButtonPanel.TabIndex = 0;
+            // 
+            // btnReset
+            // 
+            btnReset.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnReset.BackColor = Color.Gray;
+            btnReset.FlatAppearance.MouseDownBackColor = Color.DimGray;
+            btnReset.FlatAppearance.MouseOverBackColor = Color.DarkGray;
+            btnReset.FlatStyle = FlatStyle.Flat;
+            btnReset.Font = new Font("Microsoft YaHei UI", 9F);
+            btnReset.ForeColor = Color.White;
+            btnReset.Location = new Point(325, 3);
+            btnReset.Name = "btnReset";
+            btnReset.Size = new Size(80, 32);
+            btnReset.TabIndex = 2;
+            btnReset.Text = "重置";
+            btnReset.UseVisualStyleBackColor = false;
+            btnReset.Click += BtnReset_Click;
+            // 
+            // btnCancel
+            // 
+            btnCancel.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnCancel.BackColor = Color.FromArgb(239, 83, 80);
+            btnCancel.FlatAppearance.MouseDownBackColor = Color.FromArgb(192, 0, 0);
+            btnCancel.FlatAppearance.MouseOverBackColor = Color.Red;
+            btnCancel.FlatStyle = FlatStyle.Flat;
+            btnCancel.Font = new Font("Microsoft YaHei UI", 9F);
+            btnCancel.ForeColor = Color.White;
+            btnCancel.Location = new Point(411, 3);
+            btnCancel.Name = "btnCancel";
+            btnCancel.Size = new Size(80, 32);
+            btnCancel.TabIndex = 1;
+            btnCancel.Text = "取消";
+            btnCancel.UseVisualStyleBackColor = false;
+            btnCancel.Click += BtnCancel_Click;
+            // 
+            // btnSave
+            // 
+            btnSave.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnSave.BackColor = SystemColors.MenuHighlight;
+            btnSave.FlatAppearance.MouseDownBackColor = SystemColors.HotTrack;
+            btnSave.FlatAppearance.MouseOverBackColor = Color.DodgerBlue;
+            btnSave.FlatStyle = FlatStyle.Flat;
+            btnSave.Font = new Font("Microsoft YaHei UI", 9F, FontStyle.Bold);
+            btnSave.ForeColor = Color.White;
+            btnSave.Location = new Point(497, 3);
+            btnSave.Name = "btnSave";
+            btnSave.Size = new Size(80, 32);
+            btnSave.TabIndex = 0;
+            btnSave.Text = "保存";
+            btnSave.UseVisualStyleBackColor = false;
+            btnSave.Click += BtnSave_Click;
             // 
             // SettingsForm
             // 
@@ -508,6 +566,7 @@ namespace SimpleAgent
             ((System.ComponentModel.ISupportInitialize)numSubMaxThinkingRounds).EndInit();
             ((System.ComponentModel.ISupportInitialize)numMaxTokens).EndInit();
             ((System.ComponentModel.ISupportInitialize)numContextCompressionThreshold).EndInit();
+            ButtonPanel.ResumeLayout(false);
             ResumeLayout(false);
         }
 
