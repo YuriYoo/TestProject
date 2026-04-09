@@ -242,13 +242,16 @@ namespace SimpleAgent
             try
             {
                 await multiAgentOrchestrator.RunWorkflowAsync(text, WorkflowState.Developing);
-                ActivationSendButton();
-                conversationManager?.Save();
                 Trace.WriteLine("/////////// 已恢复初始状态2 ///////////");
             }
             catch (Exception ex)
             {
                 logger.LogError("从Coder开始运行失败: {msg}", ex.Message);
+            }
+            finally
+            {
+                ActivationSendButton();
+                conversationManager?.Save();
             }
         }
 
@@ -262,14 +265,17 @@ namespace SimpleAgent
             {
                 isStart = true;
                 await multiAgentOrchestrator.RunWorkflowAsync(text, WorkflowState.Planning);
-                ActivationSendButton();
-                isStart = false;
-                conversationManager?.Save();
                 Trace.WriteLine("/////////// 已恢复初始状态 ///////////");
             }
             catch (Exception ex)
             {
                 logger.LogError("从Planner开始运行失败: {msg}", ex.Message);
+            }
+            finally
+            {
+                ActivationSendButton();
+                isStart = false;
+                conversationManager?.Save();
             }
         }
 
@@ -281,6 +287,8 @@ namespace SimpleAgent
             // 恢复 UI 状态
             SendButton.Enabled = true;
             SendButton.Visible = true;
+            StopButton.Enabled = false;
+            StopButton.Visible = false;
             QuestionDialog.Visible = false;
             chatUIService.SetStopRunning();
 
@@ -295,6 +303,8 @@ namespace SimpleAgent
         {
             SendButton.Enabled = false;
             SendButton.Visible = false;
+            StopButton.Enabled = true;
+            StopButton.Visible = true;
 
             // 焦点还给输入框
             UserInput.Focus();
