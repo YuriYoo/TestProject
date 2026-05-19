@@ -13,102 +13,107 @@ using System.Threading.Tasks;
 
 namespace SimpleAgent.Agents
 {
-	public abstract class BaseAgent
-	{
-		public ChatHistory chatHistory;
-		public IChatCompletionService chatCompletionService;
+    public abstract class BaseAgent
+    {
+        public ChatHistory chatHistory;
+        public IChatCompletionService chatCompletionService;
 
-		protected OpenAIPromptExecutionSettings settings;
-		protected Kernel kernel;
+        protected OpenAIPromptExecutionSettings settings;
+        protected Kernel kernel;
 
-		protected int seed = Random.Shared.Next();
+        protected int seed = Random.Shared.Next();
 
-		protected const int PlannerSeed = -1;
-		protected const int DeveloperSeed = -1;
-		protected const int ReviewerSeed = -1;
-		protected const int RouterSeed = -1;
+        protected const int PlannerSeed = -1;
+        protected const int DeveloperSeed = -1;
+        protected const int ReviewerSeed = -1;
+        protected const int RouterSeed = -1;
 
-		//protected const int PlannerSeed = 1560201831;
-		//protected const int DeveloperSeed = 666262285;
-		//protected const int ReviewerSeed = 400363365;
-		//protected const int RouterSeed = 189011865;
+        //protected const int PlannerSeed = 1930687007;
+        //protected const int DeveloperSeed = 1675845728;
+        //protected const int ReviewerSeed = 669540654;
+        //protected const int RouterSeed = 433918841;
 
-		private readonly string systemPrompt;
-		protected readonly AgentContext context;
+        //protected const int PlannerSeed = 1560201831;
+        //protected const int DeveloperSeed = 666262285;
+        //protected const int ReviewerSeed = 400363365;
+        //protected const int RouterSeed = 189011865;
 
-		public BaseAgent(string systemPrompt, AgentContext context)
-		{
-			this.systemPrompt = systemPrompt;
-			this.context = context;
+        private readonly string systemPrompt;
+        protected readonly AgentContext context;
 
-			chatHistory = [];
-			chatHistory.AddSystemMessage(systemPrompt);
-		}
+        public BaseAgent(string systemPrompt, AgentContext context)
+        {
+            this.systemPrompt = systemPrompt;
+            this.context = context;
 
-		/// <summary>
-		/// 重置对话历史（保留系统提示）
-		/// </summary>
-		public void Reset()
-		{
-			chatHistory.Clear();
-			chatHistory.AddSystemMessage(systemPrompt);
-		}
+            chatHistory = [];
+            chatHistory.AddSystemMessage(systemPrompt);
+        }
 
-		/// <summary>
-		/// 添加用户消息
-		/// </summary>
-		/// <param name="message"></param>
-		public void AddUserMessage(string message)
-		{
-			chatHistory.AddUserMessage(message);
-		}
+        /// <summary>
+        /// 重置对话历史（保留系统提示）
+        /// </summary>
+        public void Reset()
+        {
+            chatHistory.Clear();
+            chatHistory.AddSystemMessage(systemPrompt);
+        }
 
-		/// <summary>
-		/// 添加智能体消息
-		/// </summary>
-		/// <param name="message"></param>
-		public void AddAssistantMessage(string message)
-		{
-			chatHistory.AddAssistantMessage(message);
-		}
+        /// <summary>
+        /// 添加用户消息
+        /// </summary>
+        /// <param name="message"></param>
+        public void AddUserMessage(string message)
+        {
+            chatHistory.AddUserMessage(message);
+        }
 
-		/// <summary>
-		/// 添加系统消息
-		/// </summary>
-		/// <param name="message"></param>
-		public void AddSystemMessage(string message)
-		{
-			chatHistory.AddSystemMessage(message);
-		}
+        /// <summary>
+        /// 添加智能体消息
+        /// </summary>
+        /// <param name="message"></param>
+        public void AddAssistantMessage(string message)
+        {
+            chatHistory.AddAssistantMessage(message);
+        }
 
-		/// <summary>
-		/// 添加开发者消息
-		/// </summary>
-		/// <param name="message"></param>
-		public void AddDeveloperMessage(string message)
-		{
-			chatHistory.AddDeveloperMessage(message);
-		}
+        /// <summary>
+        /// 添加系统消息
+        /// </summary>
+        /// <param name="message"></param>
+        public void AddSystemMessage(string message)
+        {
+            chatHistory.AddSystemMessage(message);
+        }
 
-		/// <summary>
-		/// 获取模型回复(异步流式输出)
-		/// </summary>
-		/// <returns></returns>
-		public async IAsyncEnumerable<StreamingChatMessageContent> GetStreamingChatMessageContentsAsync(CancellationTokenSource? cts = null)
-		{
-			await foreach (var chunk in chatCompletionService.GetStreamingChatMessageContentsAsync(chatHistory, settings, kernel, cts != null ? cts.Token : default))
-			{
-				yield return chunk;
-			}
-		}
+        /// <summary>
+        /// 添加开发者消息
+        /// </summary>
+        /// <param name="message"></param>
+        public void AddDeveloperMessage(string message)
+        {
+            chatHistory.AddDeveloperMessage(message);
+        }
 
-		/// <summary>
-		/// 获取模型回复(异步一次性输出)
-		/// </summary>
-		/// <returns></returns>
-		public async Task<Microsoft.SemanticKernel.ChatMessageContent> GetChatMessageContentAsync()
-		{
-			return await chatCompletionService.GetChatMessageContentAsync(chatHistory, settings, kernel);
-		}
-	}
+        /// <summary>
+        /// 获取模型回复(异步流式输出)
+        /// </summary>
+        /// <returns></returns>
+        public async IAsyncEnumerable<StreamingChatMessageContent> GetStreamingChatMessageContentsAsync(CancellationTokenSource? cts = null)
+        {
+            await foreach (var chunk in chatCompletionService.GetStreamingChatMessageContentsAsync(chatHistory, settings, kernel, cts != null ? cts.Token : default))
+            {
+                yield return chunk;
+            }
+        }
+
+        /// <summary>
+        /// 获取模型回复(异步一次性输出)
+        /// </summary>
+        /// <returns></returns>
+        public async Task<Microsoft.SemanticKernel.ChatMessageContent> GetChatMessageContentAsync()
+        {
+            return await chatCompletionService.GetChatMessageContentAsync(chatHistory, settings, kernel);
+        }
+    }
 }

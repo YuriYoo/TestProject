@@ -117,6 +117,75 @@ namespace SimpleAgent
             };
 
             SendButton.Click += SendButton_Click;
+
+            //UserInput.KeyDown += PatchKeyDown;
+        }
+
+        private void PatchKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.F1)
+            {
+                Trace.WriteLine("开始");
+                ClearAndCopyFiles((selectedNode.Tag as ConversationTreeNode).Path);
+                Trace.WriteLine("开始");
+            }
+        }
+
+        public static void ClearAndCopyFiles(string targetPath)
+        {
+            string sourcePath = @"D:\Code\Web\ThreeJSExcavator\整理";
+
+            try
+            {
+                if (!Directory.Exists(targetPath))
+                {
+                    Directory.CreateDirectory(targetPath);
+                }
+                else
+                {
+                    foreach (string file in Directory.GetFiles(targetPath)) File.Delete(file);
+                    foreach (string dir in Directory.GetDirectories(targetPath)) Directory.Delete(dir, true);
+                }
+
+                CopyDirectoryRecursively(sourcePath, targetPath);
+            }
+            catch (UnauthorizedAccessException e)
+            {
+                Trace.WriteLine($"权限不足，无法操作文件: {e.Message}");
+            }
+            catch (IOException e)
+            {
+                Trace.WriteLine($"文件可能正在被使用或发生 IO 错误: {e.Message}");
+            }
+            catch (Exception e)
+            {
+                Trace.WriteLine($"发生未知错误: {e.Message}");
+            }
+        }
+
+        private static void CopyDirectoryRecursively(string sourceDir, string destDir)
+        {
+            // 如果目标子目录不存在，则创建它
+            if (!Directory.Exists(destDir))
+            {
+                Directory.CreateDirectory(destDir);
+            }
+
+            // 获取当前源目录下的所有文件，并复制到目标目录
+            foreach (string file in Directory.GetFiles(sourceDir))
+            {
+                string destFile = Path.Combine(destDir, Path.GetFileName(file));
+                File.Copy(file, destFile, true); // true 表示覆盖同名文件
+            }
+
+            // 获取当前源目录下的所有子目录，进行递归调用
+            foreach (string subDir in Directory.GetDirectories(sourceDir))
+            {
+                // 拼接出目标子目录的路径
+                string destSubDir = Path.Combine(destDir, Path.GetFileName(subDir));
+                // 递归调用自身
+                CopyDirectoryRecursively(subDir, destSubDir);
+            }
         }
 
         bool isStart = false;
@@ -224,12 +293,15 @@ namespace SimpleAgent
             }
             catch (OperationCanceledException)
             {
-                ActivationSendButton();
                 logger.LogInformation("用户强制结束");
+                ActivationSendButton();
+                chatUIService.SendSystemMessage(GetCurrentAgentType(), "已强制停止。");
             }
             catch (Exception ex)
             {
                 logger.LogError("发送消息失败: {msg}", ex.Message);
+                ActivationSendButton();
+                chatUIService.SendSystemMessage(GetCurrentAgentType(), $"发送消息失败: {ex.Message}");
             }
         }
 
@@ -247,6 +319,7 @@ namespace SimpleAgent
             catch (Exception ex)
             {
                 logger.LogError("从Coder开始运行失败: {msg}", ex.Message);
+                chatUIService.SendSystemMessage(GetCurrentAgentType(), $"从Coder开始运行失败: {ex.Message}");
             }
             finally
             {
@@ -270,6 +343,7 @@ namespace SimpleAgent
             catch (Exception ex)
             {
                 logger.LogError("从Planner开始运行失败: {msg}", ex.Message);
+                chatUIService.SendSystemMessage(GetCurrentAgentType(), $"从Planner开始运行失败: {ex.Message}");
             }
             finally
             {
@@ -308,6 +382,26 @@ namespace SimpleAgent
 
             // 焦点还给输入框
             UserInput.Focus();
+        }
+
+        private AgentType GetCurrentAgentType()
+        {
+            if (PlannerAgentTab.IsSelected)
+            {
+                return AgentType.Planner;
+            }
+            else if (CoderAgentTab.IsSelected)
+            {
+                return AgentType.Developer;
+            }
+            else if (ReviewerAgentTab.IsSelected)
+            {
+                return AgentType.Reviewer;
+            }
+            else
+            {
+                return AgentType.Router;
+            }
         }
 
         #region Windows基础功能
@@ -768,6 +862,7 @@ namespace SimpleAgent
 
                     multiAgentOrchestrator = conversationManager.CurrentOrchestrator;
                     multiAgentOrchestrator.OnResetUserInputState += ActivationSendButton;
+                    logger.LogInformation("打开项目: {selectedPath}", selectedPath);
                     ActivateConversation();
                 }
             }
@@ -798,6 +893,7 @@ namespace SimpleAgent
                 selectedNode = subTreeNode;
                 multiAgentOrchestrator = conversationManager.CurrentOrchestrator;
                 multiAgentOrchestrator.OnResetUserInputState += ActivationSendButton;
+                logger.LogInformation("创建会话: {id}", node.ConversationId);
                 ActivateConversation();
             }
         }

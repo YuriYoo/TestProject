@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Serilog;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -46,8 +47,8 @@ namespace SimpleAgent.Utility
                 if (response.Content != null)
                 {
                     // 将响应内容加载到内存缓冲区，确保 SK 稍后也能读取它
-                    await response.Content.LoadIntoBufferAsync();
-                    string responseBody = await response.Content.ReadAsStringAsync();
+                    await response.Content.LoadIntoBufferAsync(cancellationToken);
+                    string responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
                     Trace.WriteLine($"{responseBody}");
                     Trace.WriteLine($"========== [HTTP请求结束] ==========");
                 }
@@ -58,8 +59,12 @@ namespace SimpleAgent.Utility
             {
 
             }
+            catch (Exception ex)
+            {
+                Log.Error("请求失败: {msg}", ex.Message);
+            }
 
-            return new HttpResponseMessage(System.Net.HttpStatusCode.NotFound);
+            return new HttpResponseMessage((System.Net.HttpStatusCode)418);
         }
     }
 }
